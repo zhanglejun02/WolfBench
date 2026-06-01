@@ -1,0 +1,22 @@
+{
+  "scenario": "s2",
+  "alpha": 0.003,
+  "n_grid": [
+    500,
+    2000
+  ],
+  "placements": [
+    "random",
+    "high_degree"
+  ],
+  "seeds": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8
+  ]
+}

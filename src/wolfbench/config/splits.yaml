@@ -1,0 +1,21 @@
+# WolfBench seed splits — submissions are evaluated on these fixed seeds so
+# results are comparable. Use ``--split dev`` while iterating, ``--split test``
+# for the public leaderboard, and reserve ``hidden`` / ``stress`` for offline
+# audits performed by maintainers.
+public_dev:
+  seeds: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+public_test:
+  seeds: [101, 102, 103, 104, 105, 106, 107, 108, 109, 110,
+          111, 112, 113, 114, 115, 116, 117, 118, 119, 120]
+hidden_test:
+  seeds: [201, 202, 203, 204, 205, 206, 207, 208, 209, 210]
+stress_test:
+  # extreme-α / large-N regime, only used for robustness reports
+  seeds: [301, 302, 303, 304, 305]
+
+# Canonical evaluation grid for the public leaderboard
+canonical:
+  scenarios: [s1, s2, s3, s4]
+  alphas: [0.0, 0.005, 0.01, 0.02, 0.05, 0.1]
+  n_society: [200, 1000, 5000]
+  horizon_days: 30
