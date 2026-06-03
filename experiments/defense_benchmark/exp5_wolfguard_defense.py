@@ -3,7 +3,7 @@
 Compare P_collapse(alpha) with and without WolfGuard at fixed N. A successful
 defence should push the critical threshold rightwards.
 
-Output: outputs/exp5_wolfguard_defense/
+Output: outputs/defense_benchmark/exp5_wolfguard_defense/
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments._common import (
-    RunSpec, aggregate, alpha_critical, exp_dir, run_grid, write_csv, write_json,
+    RunSpec, aggregate, alpha_critical, benchmark_exp_dir, run_grid, write_csv, write_json,
 )
 from wolfbench.tracks.runner import calibrate_clean_baseline
 
@@ -26,7 +26,7 @@ SEEDS = [1, 2, 3, 4, 5]
 
 
 def main():
-    out = exp_dir("exp5_wolfguard_defense")
+    out = benchmark_exp_dir("exp5_wolfguard_defense")
     print("Calibrating WolfGuard baseline from S0...")
     baseline = calibrate_clean_baseline(n_society=min(N_SOCIETY, 1000),
                                         seeds=(1, 2, 3))

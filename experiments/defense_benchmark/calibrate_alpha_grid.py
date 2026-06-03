@@ -10,7 +10,7 @@ Environment overrides:
 * WOLFBENCH_CALIB_ALPHAS=0,0.0025,...
 * WOLFBENCH_CALIB_SEEDS=1,2,3,4,5
 
-Outputs: outputs/alpha_calibration/
+Outputs: outputs/defense_benchmark/alpha_calibration/
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from experiments._common import RunSpec, aggregate, exp_dir, run_grid, write_csv, write_json
+from experiments._common import RunSpec, aggregate, benchmark_exp_dir, run_grid, write_csv, write_json
 from wolfbench.metrics import bootstrap_ci
 
 
@@ -95,7 +95,7 @@ def _write_recommended_env(path: Path, recommended: dict[str, list[float]]) -> N
 
 
 def main() -> None:
-    out = exp_dir("alpha_calibration")
+    out = benchmark_exp_dir("alpha_calibration")
     specs = [RunSpec(scenario, n, alpha, seed)
              for scenario in SCENARIOS for n in N_GRID for alpha in ALPHAS for seed in SEEDS]
     print(f"Running {len(specs)} NoGuard episodes for alpha calibration...")

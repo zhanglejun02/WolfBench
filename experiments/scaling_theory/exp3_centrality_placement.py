@@ -4,7 +4,7 @@ At fixed alpha, plug harmful finfluencers into either random nodes or
 high-degree hubs, and compare collapse outcomes. Demonstrates the
 "centrality-harm elasticity" effect (paper §10 Social Experiment 1).
 
-Output: outputs/exp3_centrality_placement/
+Output: outputs/scaling_theory/exp3_centrality_placement/
 """
 from __future__ import annotations
 
@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments._common import (
-    RunSpec, aggregate, exp_dir, run_grid, write_csv, write_json,
+    RunSpec, aggregate, run_grid, scaling_exp_dir, write_csv, write_json,
 )
 
 
@@ -27,7 +27,7 @@ SEEDS = [1, 2, 3, 4, 5, 6, 7, 8]
 
 
 def main():
-    out = exp_dir("exp3_centrality_placement")
+    out = scaling_exp_dir("exp3_centrality_placement")
     specs = []
     for N in N_GRID:
         for p in PLACEMENTS:

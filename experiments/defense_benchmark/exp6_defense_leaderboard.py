@@ -4,11 +4,11 @@ Question: when the same harmful population is held fixed, how do different
 defense policies compare on DefenseScore + ThresholdShift?
 
 Outputs:
-* ``outputs/exp6/data.csv``       — per-(defense, scenario, alpha, seed) row
-* ``outputs/exp6/leaderboard.csv``
-* ``outputs/exp6/summary.json``
-* ``outputs/exp6/leaderboard.png`` — DefenseScore by defense / scenario
-* ``outputs/exp6/threshold_shift.png``
+* ``outputs/defense_benchmark/exp6/data.csv``       — per-(defense, scenario, alpha, seed) row
+* ``outputs/defense_benchmark/exp6/leaderboard.csv``
+* ``outputs/defense_benchmark/exp6/summary.json``
+* ``outputs/defense_benchmark/exp6/leaderboard.png`` — DefenseScore by defense / scenario
+* ``outputs/defense_benchmark/exp6/threshold_shift.png``
 """
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments._common import (
-    RunSpec, exp_dir, run_grid, write_csv, write_json,
+    RunSpec, benchmark_exp_dir, run_grid, write_csv, write_json,
 )
 from wolfbench.defense import get_policy, get_track
 from wolfbench.metrics import bootstrap_ci, defense_score, threshold_shift
@@ -83,7 +83,7 @@ def _official_score(defense_name: str, raw_score: float) -> float:
 
 
 def main():
-    out = exp_dir(OUT_NAME)
+    out = benchmark_exp_dir(OUT_NAME)
     alpha_grids = {s: _alphas_for(s) for s in SCENARIOS}
     baseline = calibrate_clean_baseline(n_society=min(max(N_GRID), 1000))
 

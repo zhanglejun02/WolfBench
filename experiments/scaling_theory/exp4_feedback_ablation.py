@@ -3,7 +3,7 @@
 Hold harmful ratio fixed; sweep ``social.feedback_strength`` to measure how
 strongly the social-financial reflexive loop amplifies collapse.
 
-Output: outputs/exp4_feedback_ablation/
+Output: outputs/scaling_theory/exp4_feedback_ablation/
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments._common import (
-    RunSpec, aggregate, exp_dir, run_grid, write_csv, write_json,
+    RunSpec, aggregate, run_grid, scaling_exp_dir, write_csv, write_json,
 )
 
 
@@ -26,7 +26,7 @@ SEEDS = [1, 2, 3, 4, 5, 6, 7, 8]
 
 
 def main():
-    out = exp_dir("exp4_feedback_ablation")
+    out = scaling_exp_dir("exp4_feedback_ablation")
     specs = []
     for f in FEEDBACKS:
         for s in SEEDS:

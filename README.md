@@ -1,11 +1,19 @@
 # WolfBench
 
-**WolfBench: A Financial Multi-Agent Safety Benchmark for Evaluating Defense Models under Harmful-Agent Scaling**
+**WolfBench: A Controlled Agent-Society Instrument for Harmful-Agent Scaling and Defense Benchmarking**
 
-WolfBench is a **defense-model evaluation benchmark**. It asks: *given a
-financial multi-agent system with a tunable fraction `α` of harmful agents,
-how well does your defense model — rule-based, LLM-based, or RL-based —
-suppress system-level collapse while preserving market utility?*
+WolfBench separates two linked contributions:
+
+- **Harmful-agent scaling theory** — the claim that, for a fixed agent-society
+  size `N`, there is a critical harmful-agent ratio `α_c(N)` around which
+  collapse probability changes nonlinearly.
+- **Defense benchmarking** — the evaluation question: *given a financial
+  multi-agent system with a tunable fraction `α` of harmful agents, how well
+  does a defense model suppress system-level collapse while preserving market
+  utility?*
+
+In short: harmful-agent scaling is the phenomenon; WolfBench is the instrument;
+`ThresholdShift` is the defense objective.
 
 Submissions implement a single interface, [`WolfGuardPolicy`](src/wolfbench/defense/policy.py),
 and are scored on a fixed evaluation grid against canonical attacker
@@ -20,6 +28,10 @@ populations.
 
 ## Why WolfBench
 
+* **Controlled scaling protocol.** The scaling-theory experiments vary `α` and
+  `N` under fixed attacker strategies, repeated seeds, and ablations for
+  placement and feedback so that `P_collapse(N, α)` and `α_c(N)` can be measured
+  separately from defense performance.
 * **Phase-transition stress test.** Harmful-agent prevalence is varied across
   the critical regime, so weak defenses are exposed as `α_c` is approached.
 * **Closed-loop evaluation.** Defenses receive a compressed daily observation
@@ -90,11 +102,12 @@ only JSON-serializable observations/actions with the environment process.
 
 ## Tracks
 
-- **Defense Track (primary)** — submit a `WolfGuardPolicy`, maximise
+- **Scaling Theory Track** — sweep `α` and `N`, estimate
+  `P_collapse(N, α) = Pr[C=1 | N, α]`, fit `α_c(N)`, and run controlled
+  ablations for placement and social-market feedback.
+- **Defense Benchmark Track** — submit a `WolfGuardPolicy`, maximise
   `DefenseScore` and `ThresholdShift Δα_c`.
 - **Attack Track** — submit attacker policy, maximise harm at low `α`.
-- **Scaling Track** — sweep `α` and `N`, estimate `P_collapse(N, α)` and
-  the critical threshold `α_c(N)`.
 
 ### DefenseScore
 
@@ -205,10 +218,10 @@ Then run either a quick single-scenario check or the full leaderboard:
 
 ```bash
 wolfbench evaluate --defense qwen --scenario s1 --alphas 0.02 --seeds 1
-python -m experiments.exp6_defense_leaderboard
+python -m experiments.defense_benchmark.exp6_defense_leaderboard
 ```
 
-`experiments.exp6_defense_leaderboard` defaults to eligible non-LLM defenses
+`experiments.defense_benchmark.exp6_defense_leaderboard` defaults to eligible non-LLM defenses
 (`noguard,random,rule`) plus the separate `oracle` upper bound because LLM
 defenses call the model once per day. Add `qwen` or `qwen_assisted` explicitly
 when you want to run those tracks:
@@ -216,7 +229,7 @@ when you want to run those tracks:
 ```bash
 WOLFBENCH_EXP6_DEFENSES=noguard,qwen \
 WOLFBENCH_EXP6_N_GRID=1000 \
-python -m experiments.exp6_defense_leaderboard
+python -m experiments.defense_benchmark.exp6_defense_leaderboard
 ```
 
 Override the grid without editing code via `WOLFBENCH_EXP6_DEFENSES`,
@@ -239,37 +252,63 @@ src/wolfbench/
   metrics/            CollapseScore, DefenseScore, ThresholdShift
   tracks/             attack / defense / scaling drivers
   cli.py              command-line interface
-experiments/          reproducible empirical studies (exp1–exp6)
+experiments/
+  scaling_theory/     controlled scaling studies; writes outputs/scaling_theory/
+  defense_benchmark/  calibration, defense baselines, leaderboard; writes outputs/defense_benchmark/
+  _common.py          shared experiment runner and I/O helpers
 ```
 
 ---
 
 ## Experiments
 
-`experiments/` ships seven reproducible studies. The first five characterise
-the underlying scaling phenomenon; the calibration and leaderboard scripts turn
-those curves into defense-evaluation grids.
+`experiments/` is split into two folders so theory evidence and benchmark
+leaderboards do not share output directories.
+
+### Scaling Theory Track
+
+These scripts write to `outputs/scaling_theory/` and are intended to make the
+harmful-agent scaling claim solid before comparing defenses.
 
 | # | Script | Question it answers |
 |---|--------|---------------------|
-| 1 | `exp1_alpha_scaling` | Is collapse a nonlinear phase transition in α? Sweeps α at N ∈ {200, 1k, 5k} on S1, locates α_c(N). |
-| 2 | `exp2_society_size_scaling` | How does α_c scale with N? Fits α_c(N) ≈ A·N^β and renders a P_collapse heat-map. |
-| 3 | `exp3_centrality_placement` | Does *where* harmful agents sit on the social graph matter? Compares `random` vs `high_degree` placement. |
-| 4 | `exp4_feedback_ablation` | How much does the social–market reflexive loop amplify harm? Sweeps `social.feedback_strength`. |
-| 5 | `exp5_wolfguard_defense` | Can the rule baseline push α_c rightwards? P(collapse) curves with vs without defense. |
-| 6 | `exp6_defense_leaderboard` | **Defense leaderboard.** Runs full grids across calibrated per-scenario α, multiple N and seeds, and reports track-aware `OfficialScore`, raw `DefenseScore`, `ThresholdShift`, and 95% CI. |
-| 7 | `calibrate_alpha_grid` | Calibrates S1-S4 α grids around visible critical regions before running defense evaluation. |
+| 1 | `scaling_theory.exp1_alpha_scaling` | Is collapse a nonlinear phase transition in α? Sweeps α at N ∈ {200, 1k, 5k} on S1, locates α_c(N). |
+| 2 | `scaling_theory.exp2_society_size_scaling` | How does α_c scale with N? Fits α_c(N) ≈ A·N^β and renders a P_collapse heat-map. |
+| 3 | `scaling_theory.exp3_centrality_placement` | Does *where* harmful agents sit on the social graph matter? Compares `random` vs `high_degree` placement. |
+| 4 | `scaling_theory.exp4_feedback_ablation` | How much does the social-market reflexive loop amplify harm? Sweeps `social.feedback_strength`. |
 
 ```bash
-python -m experiments.exp1_alpha_scaling
-python -m experiments.exp2_society_size_scaling
-python -m experiments.exp3_centrality_placement
-python -m experiments.exp4_feedback_ablation
-python -m experiments.exp5_wolfguard_defense
-python -m experiments.calibrate_alpha_grid
-python -m experiments.exp6_defense_leaderboard
-# or:
+python -m experiments.scaling_theory.exp1_alpha_scaling
+python -m experiments.scaling_theory.exp2_society_size_scaling
+python -m experiments.scaling_theory.exp3_centrality_placement
+python -m experiments.scaling_theory.exp4_feedback_ablation
+
+# run only the scaling-theory suite
+python -m experiments.scaling_theory.run_all
+
+# run every shipped experiment across both tracks
 python -m experiments.run_all
+```
+
+### Defense Benchmark Track
+
+These scripts write to `outputs/defense_benchmark/` and are for evaluating
+defense policies after the scaling protocol is fixed.
+
+| # | Script | Question it answers |
+|---|--------|---------------------|
+| 5 | `defense_benchmark.exp5_wolfguard_defense` | Can the rule baseline push α_c rightwards? P(collapse) curves with vs without defense. |
+| 6 | `defense_benchmark.calibrate_alpha_grid` | Calibrates S1-S4 α grids around visible critical regions before running defense evaluation. |
+| 7 | `defense_benchmark.exp6_defense_leaderboard` | **Defense leaderboard.** Runs full grids across calibrated per-scenario α, multiple N and seeds, and reports track-aware `OfficialScore`, raw `DefenseScore`, `ThresholdShift`, and 95% CI. |
+| 8 | `defense_benchmark.analyze_qwen_baseline` | Post-run analysis for the local Qwen/vLLM leaderboard row. |
+
+```bash
+python -m experiments.defense_benchmark.exp5_wolfguard_defense
+python -m experiments.defense_benchmark.calibrate_alpha_grid
+python -m experiments.defense_benchmark.exp6_defense_leaderboard
+
+# run only the defense-benchmark suite
+python -m experiments.defense_benchmark.run_all
 ```
 
 Current calibrated full-grid defaults are:
@@ -312,7 +351,7 @@ intervals preserve the same ordering.
                       --scenario s1 --out my_s1.json
    ```
 4. Report mean ± std DefenseScore across `S1–S4`, plus `ThresholdShift` per
-   scenario, plus a row from `exp6_defense_leaderboard` with your policy
+  scenario, plus a row from `defense_benchmark.exp6_defense_leaderboard` with your policy
    added to the registry.
 
 ---

@@ -2,7 +2,7 @@
 with society size N. Theory (paper §9.4) predicts alpha_c ~ Theta / N (or a
 sub-linear power law), giving a straight line on a log-log plot.
 
-Output: outputs/exp2_society_size_scaling/
+Output: outputs/scaling_theory/exp2_society_size_scaling/
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments._common import (
-    RunSpec, aggregate, exp_dir, run_grid, write_csv, write_json,
+    RunSpec, aggregate, run_grid, scaling_exp_dir, write_csv, write_json,
 )
 
 
@@ -49,7 +49,7 @@ def estimate_alpha_c(rows, N, alphas, threshold: float = 0.5):
 
 
 def main():
-    out = exp_dir("exp2_society_size_scaling")
+    out = scaling_exp_dir("exp2_society_size_scaling")
     specs = [RunSpec(SCENARIO, N, a, s) for N in N_GRID for a in ALPHAS for s in SEEDS]
     print(f"Running {len(specs)} episodes for exp2...")
     rows = run_grid(specs)

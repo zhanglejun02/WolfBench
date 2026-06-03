@@ -1,6 +1,8 @@
 """Shared helpers for WolfBench experiments.
 
-Each experiment writes to ``outputs/<exp_name>/`` with at least:
+Scaling-theory experiments write to ``outputs/scaling_theory/<exp_name>/``.
+Defense-benchmark experiments write to ``outputs/defense_benchmark/<exp_name>/``.
+Each experiment directory contains at least:
 * ``config.json``  -- experiment configuration
 * ``data.csv``     -- raw per-episode metrics
 * one or more ``*.png`` figures
@@ -27,12 +29,23 @@ from wolfbench.tracks.runner import calibrate_clean_baseline
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 OUTPUTS_ROOT = REPO_ROOT / "outputs"
+SCALING_THEORY_OUTPUTS_ROOT = OUTPUTS_ROOT / "scaling_theory"
+DEFENSE_BENCHMARK_OUTPUTS_ROOT = OUTPUTS_ROOT / "defense_benchmark"
 
 
-def exp_dir(name: str) -> Path:
-    d = OUTPUTS_ROOT / name
+def exp_dir(name: str, track: str | None = None) -> Path:
+    root = OUTPUTS_ROOT if track is None else OUTPUTS_ROOT / track
+    d = root / name
     d.mkdir(parents=True, exist_ok=True)
     return d
+
+
+def scaling_exp_dir(name: str) -> Path:
+    return exp_dir(name, "scaling_theory")
+
+
+def benchmark_exp_dir(name: str) -> Path:
+    return exp_dir(name, "defense_benchmark")
 
 
 @dataclass

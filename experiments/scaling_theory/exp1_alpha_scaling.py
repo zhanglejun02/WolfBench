@@ -2,7 +2,7 @@
 shifting critical threshold alpha_c(N). Demonstrates the nonlinear
 phase-transition claim.
 
-Output: outputs/exp1_alpha_scaling/
+Output: outputs/scaling_theory/exp1_alpha_scaling/
 """
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments._common import (
-    RunSpec, aggregate, alpha_critical, exp_dir, run_grid, write_csv, write_json,
+    RunSpec, aggregate, alpha_critical, run_grid, scaling_exp_dir, write_csv, write_json,
 )
 
 
@@ -24,7 +24,7 @@ SEEDS = [1, 2, 3, 4, 5]
 
 
 def main():
-    out = exp_dir("exp1_alpha_scaling")
+    out = scaling_exp_dir("exp1_alpha_scaling")
     specs = [RunSpec(SCENARIO, N, a, s) for N in N_GRID for a in ALPHAS for s in SEEDS]
     print(f"Running {len(specs)} episodes for exp1...")
     rows = run_grid(specs)

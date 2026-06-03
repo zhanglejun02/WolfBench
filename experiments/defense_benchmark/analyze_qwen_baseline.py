@@ -3,10 +3,12 @@ from __future__ import annotations
 
 import csv
 import json
-from pathlib import Path
+import os
+
+from experiments._common import DEFENSE_BENCHMARK_OUTPUTS_ROOT
 
 
-EXP6_DIR = Path(__file__).resolve().parent.parent / "outputs" / "exp6"
+EXP6_DIR = DEFENSE_BENCHMARK_OUTPUTS_ROOT / os.getenv("WOLFBENCH_EXP6_OUT", "exp6")
 
 
 def _read_csv(path: Path) -> list[dict[str, str]]:
@@ -23,7 +25,7 @@ def main() -> None:
     leaderboard_path = EXP6_DIR / "leaderboard.csv"
     overall_path = EXP6_DIR / "leaderboard_overall.csv"
     if not leaderboard_path.exists() or not overall_path.exists():
-        raise FileNotFoundError("Run experiments.exp6_defense_leaderboard first.")
+        raise FileNotFoundError("Run experiments.defense_benchmark.exp6_defense_leaderboard first.")
 
     leaderboard = _read_csv(leaderboard_path)
     overall = _read_csv(overall_path)
