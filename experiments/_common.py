@@ -66,6 +66,7 @@ def run_episode(spec: RunSpec, baseline=None) -> dict[str, Any]:
         scen, n_society=spec.n_society, alpha=spec.alpha, seed=spec.seed,
         wolfguard=wg, baseline=baseline,
         placement_override=spec.placement,
+        expose_oracle=(spec.label == "oracle" or wg.__class__.__name__ == "OracleWolfGuardPolicy" if wg is not None else False),
     )
     res = env.run()
     m = res.metrics

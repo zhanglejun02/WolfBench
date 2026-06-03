@@ -16,7 +16,9 @@ from wolfbench.defense.baselines import (
     RuleWolfGuardPolicy,
     OracleWolfGuardPolicy,
     LLMWolfGuardPolicy,
+    QwenVLLMWolfGuardPolicy,
     BASELINES,
+    get_track,
     get_policy,
 )
 
@@ -29,6 +31,8 @@ __all__ = [
     "RuleWolfGuardPolicy",
     "OracleWolfGuardPolicy",
     "LLMWolfGuardPolicy",
+    "QwenVLLMWolfGuardPolicy",
     "BASELINES",
+    "get_track",
     "get_policy",
 ]

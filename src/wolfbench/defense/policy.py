@@ -21,9 +21,8 @@ from wolfbench.agents.wolfguard import WolfGuardConfig
 class Observation:
     """Compressed per-day observation handed to the defense.
 
-    ``oracle_view`` is only populated when the environment is configured to
-    leak ground-truth harmful pressure (used by :class:`OracleWolfGuardPolicy`
-    as an upper-bound baseline). Submitted policies must NOT read it.
+    ``oracle_view`` is only populated for internal upper-bound runs such as
+    :class:`OracleWolfGuardPolicy`; public submissions do not receive it.
     """
     day: int
     market: dict[str, dict[str, float]]

@@ -27,7 +27,8 @@ populations.
   market, and the social graph — not labels in a static dataset.
 * **Reproducible.** Canonical seeds, scenarios, attacker populations and
   evaluation grids live in [`config/splits.yaml`](src/wolfbench/config/splits.yaml).
-  Public-dev / public-test / hidden-test / stress-test splits are pre-defined.
+  Public-dev / public-test splits are published; hidden and stress seeds are
+  injected from private server-side configuration for official audits.
 * **Meaningful metrics.** Submissions are ranked by `DefenseScore` and
   `ThresholdShift Δα_c` — both account for harm reduction *and* utility cost.
 
@@ -58,7 +59,7 @@ from wolfbench.agents.wolfguard import WolfGuardConfig
 
 class MyDefense:
     name = "MyDefense"
-    config = WolfGuardConfig()  # cost / threshold container
+  config = WolfGuardConfig()  # detector settings only; evaluator owns costs
 
     def fit_baseline(self, baseline: dict) -> None:
         """Optional: see clean-market summary statistics."""
@@ -81,7 +82,9 @@ wolfbench evaluate --defense mypkg.mymod:MyDefense \
 ```
 
 The four canonical actions and their per-call costs are documented in
-[`WolfGuardConfig`](src/wolfbench/agents/wolfguard.py).
+the evaluator config in [`environment.py`](src/wolfbench/env/environment.py).
+Official evaluation runs submissions in a spawned policy process and exchanges
+only JSON-serializable observations/actions with the environment process.
 
 ---
 
@@ -120,8 +123,18 @@ where `W = w_H + w_C + w_T + w_U + w_F + w_I`. The default weights are:
 | `InterventionCost` | 0.5 | normalised warning / cooldown / block cost |
 
 Positive scores mean the defense improves safety after accounting for cost;
-negative scores mean the intervention is net harmful. The implementation lives
-in [`metrics/defense_score.py`](src/wolfbench/metrics/defense_score.py).
+negative scores mean the intervention is net harmful. Retail-loss reduction is
+counted only when accompanied by collapse reduction, collapse delay, or a
+positive threshold shift, so random market dampening cannot win by reducing a
+loss proxy without improving safety. The implementation lives in
+[`metrics/defense_score.py`](src/wolfbench/metrics/defense_score.py).
+
+The leaderboard reports both raw `DefenseScore` and track-aware
+`OfficialScore`. Control tracks (`noguard`, `random`) are diagnostic sanity
+checks; their official score is capped at 0 so random/control baselines cannot
+occupy the competitive leaderboard.
+Oracle upper-bound runs are reported separately and are not eligible for the
+competitive leaderboard.
 
 The benchmark also reports `ThresholdShift = α_c(defense) − α_c(NoGuard)` as a
 standalone metric because it directly measures whether a defense pushes the
@@ -155,8 +168,61 @@ wolfbench evaluate --defense my_pkg.policies:MyDefense --split public_test
 | `noguard` | `NoGuardPolicy` | reference; never intervenes |
 | `random` | `RandomGuardPolicy` | sanity check |
 | `rule` | `RuleWolfGuardPolicy` | z-score detector (canonical baseline to beat) |
-| `oracle` | `OracleWolfGuardPolicy` | upper bound; reads ground-truth pressure |
+| `oracle` | `OracleWolfGuardPolicy` | non-eligible upper bound; receives private ground-truth pressure |
 | `llm` | `LLMWolfGuardPolicy` | OpenAI-compatible LLM defender |
+| `qwen` | `Qwen3-vLLM-WolfGuard` | local vLLM / Qwen3 from-scratch baseline |
+| `qwen_assisted` | `Qwen3-vLLM-assisted` | local vLLM / Qwen3 reranking the rule baseline |
+
+### Local vLLM / Qwen baseline
+
+The `qwen` baseline calls a local OpenAI-compatible vLLM server. ModelScope has
+`Qwen/Qwen3-8B` rather than a `Qwen3-7B` repository, so WolfBench uses Qwen3-8B
+as the closest Qwen3 baseline. Model weights should live on the data disk, not
+the system disk:
+
+```bash
+pip install -e ".[llm,plot]"
+pip install modelscope
+python -m venv /root/autodl-tmp/venvs/vllm
+/root/autodl-tmp/venvs/vllm/bin/python -m pip install vllm==0.8.5.post1
+
+modelscope download --model Qwen/Qwen3-8B \
+  --local_dir /root/autodl-tmp/models/Qwen3-8B
+
+export WOLFBENCH_VLLM_MODEL=qwen3-8b
+export WOLFBENCH_VLLM_BASE_URL=http://127.0.0.1:8000/v1
+
+/root/autodl-tmp/venvs/vllm/bin/python -m vllm.entrypoints.openai.api_server \
+  --model /root/autodl-tmp/models/Qwen3-8B \
+  --served-model-name qwen3-8b \
+  --host 0.0.0.0 --port 8000 \
+  --trust-remote-code \
+  --max-model-len 8192 \
+  --gpu-memory-utilization 0.85
+```
+
+Then run either a quick single-scenario check or the full leaderboard:
+
+```bash
+wolfbench evaluate --defense qwen --scenario s1 --alphas 0.02 --seeds 1
+python -m experiments.exp6_defense_leaderboard
+```
+
+`experiments.exp6_defense_leaderboard` defaults to eligible non-LLM defenses
+(`noguard,random,rule`) plus the separate `oracle` upper bound because LLM
+defenses call the model once per day. Add `qwen` or `qwen_assisted` explicitly
+when you want to run those tracks:
+
+```bash
+WOLFBENCH_EXP6_DEFENSES=noguard,qwen \
+WOLFBENCH_EXP6_N_GRID=1000 \
+python -m experiments.exp6_defense_leaderboard
+```
+
+Override the grid without editing code via `WOLFBENCH_EXP6_DEFENSES`,
+`WOLFBENCH_EXP6_SCENARIOS`, `WOLFBENCH_EXP6_ALPHAS`,
+per-scenario overrides such as `WOLFBENCH_EXP6_ALPHAS_S2`,
+`WOLFBENCH_EXP6_SEEDS`, and `WOLFBENCH_EXP6_N_GRID`.
 
 ---
 
@@ -165,7 +231,7 @@ wolfbench evaluate --defense my_pkg.policies:MyDefense --split public_test
 ```
 src/wolfbench/
   config/scenarios/   YAML scenario cards (S0–S4)
-  config/splits.yaml  canonical seeds + evaluation grid
+  config/splits.yaml  public seeds + evaluation grid
   env/                market + social environment
   agents/             retail, market makers, attackers, baseline WolfGuard
   defense/            WolfGuardPolicy interface + baselines
@@ -180,8 +246,9 @@ experiments/          reproducible empirical studies (exp1–exp6)
 
 ## Experiments
 
-`experiments/` ships six reproducible studies. The first five characterise
-the underlying scaling phenomenon; the sixth is the defense leaderboard.
+`experiments/` ships seven reproducible studies. The first five characterise
+the underlying scaling phenomenon; the calibration and leaderboard scripts turn
+those curves into defense-evaluation grids.
 
 | # | Script | Question it answers |
 |---|--------|---------------------|
@@ -190,7 +257,8 @@ the underlying scaling phenomenon; the sixth is the defense leaderboard.
 | 3 | `exp3_centrality_placement` | Does *where* harmful agents sit on the social graph matter? Compares `random` vs `high_degree` placement. |
 | 4 | `exp4_feedback_ablation` | How much does the social–market reflexive loop amplify harm? Sweeps `social.feedback_strength`. |
 | 5 | `exp5_wolfguard_defense` | Can the rule baseline push α_c rightwards? P(collapse) curves with vs without defense. |
-| 6 | `exp6_defense_leaderboard` | **Defense leaderboard.** Runs `{NoGuard, Random, Rule, Oracle}` × `{S1..S4}` × α-grid and reports `DefenseScore` + `ThresholdShift`. |
+| 6 | `exp6_defense_leaderboard` | **Defense leaderboard.** Runs full grids across calibrated per-scenario α, multiple N and seeds, and reports track-aware `OfficialScore`, raw `DefenseScore`, `ThresholdShift`, and 95% CI. |
+| 7 | `calibrate_alpha_grid` | Calibrates S1-S4 α grids around visible critical regions before running defense evaluation. |
 
 ```bash
 python -m experiments.exp1_alpha_scaling
@@ -198,10 +266,36 @@ python -m experiments.exp2_society_size_scaling
 python -m experiments.exp3_centrality_placement
 python -m experiments.exp4_feedback_ablation
 python -m experiments.exp5_wolfguard_defense
+python -m experiments.calibrate_alpha_grid
 python -m experiments.exp6_defense_leaderboard
 # or:
 python -m experiments.run_all
 ```
+
+Current calibrated full-grid defaults are:
+
+| scenario | α grid |
+|---|---|
+| S1 | `0,0.0075,0.01,0.015,0.02,0.03` |
+| S2 | `0,0.00025,0.0005,0.00075,0.001,0.0015,0.0025` |
+| S3 | `0,0.15,0.3,0.4,0.5` |
+| S4 | `0,0.01,0.015,0.02,0.03,0.05,0.1,0.15,0.2` |
+
+Defense tracks used by Exp6:
+
+| track | defenses |
+|---|---|
+| `oracle_upper_bound` | `oracle` |
+| `rule_baseline` | `rule` |
+| `llm_from_scratch` | `llm`, `qwen` |
+| `llm_assisted_rule` | `llm_assisted`, `qwen_assisted` |
+| `control` | `noguard`, `random` |
+
+For a stronger local/open model comparison after Qwen3-8B, prefer
+`Qwen/Qwen3-14B` if VRAM permits. If memory is tight, use a quantized 14B/32B
+instruct model supported by vLLM. Compare models on the same calibrated α/N/seed
+grid and report whether `alpha_c(N)` shifts and DefenseScore confidence
+intervals preserve the same ordering.
 
 ---
 

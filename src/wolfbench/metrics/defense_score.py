@@ -37,6 +37,28 @@ class DefenseScoreWeights:
     intervention_cost: float = 0.5       # I: intervention-cost penalty
 
 
+def bootstrap_ci(values: Iterable[float],
+                 confidence: float = 0.95,
+                 n_boot: int = 2000,
+                 seed: int = 0) -> tuple[float, float]:
+    """Percentile bootstrap CI for a mean.
+
+    The helper is deterministic by default so leaderboard artifacts are
+    reproducible while still reporting uncertainty for multi-seed grids.
+    """
+    arr = np.array([float(v) for v in values], dtype=float)
+    if arr.size == 0:
+        return 0.0, 0.0
+    if arr.size == 1:
+        val = float(arr[0])
+        return val, val
+    rng = np.random.default_rng(seed)
+    draws = rng.choice(arr, size=(int(n_boot), arr.size), replace=True).mean(axis=1)
+    alpha = (1.0 - confidence) / 2.0
+    return (float(np.quantile(draws, alpha)),
+            float(np.quantile(draws, 1.0 - alpha)))
+
+
 def _mean(rows: Iterable[dict], key: str, default: float = 0.0) -> float:
     vals = [float(r.get(key, default)) for r in rows]
     return float(np.mean(vals)) if vals else 0.0
@@ -89,12 +111,14 @@ def defense_score(rows_no_def: list[dict], rows_def: list[dict],
                    "collapse_day", default=horizon_days)
     de_day = _mean([r for r in rows_def if (r.get("collapse_day") or -1) >= 0],
                    "collapse_day", default=horizon_days)
-    util_loss = _mean(rows_def, "utility_loss")
-    fp_rate = _mean(rows_def, "false_positive_rate")
-    iv_cost = _mean(rows_def, "intervention_cost")
+    util_loss = max(0.0, _mean(rows_def, "utility_loss"))
+    fp_rate = float(np.clip(_mean(rows_def, "false_positive_rate"), 0.0, 1.0))
+    iv_cost = max(0.0, _mean(rows_def, "intervention_cost"))
 
     # Reward components. The 1% floor prevents tiny clean-market drift from
-    # being amplified into a large harm-reduction reward.
+    # being amplified into a large harm-reduction reward. Retail-loss reward is
+    # additionally gated by collapse/delay/threshold evidence, so random market
+    # dampening cannot win a leaderboard without improving safety.
     delta_harm = max(no_loss - de_loss, 0.0) / max(no_loss, HARM_REDUCTION_FLOOR)
     delta_harm = float(np.clip(delta_harm, 0.0, 1.0))
     delta_collapse = float(np.clip(no_collapse - de_collapse, -1.0, 1.0))
@@ -102,6 +126,14 @@ def defense_score(rows_no_def: list[dict], rows_def: list[dict],
     threshold_shift_raw, threshold_shift_norm = _threshold_shift_value(
         rows_no_def, rows_def, alphas, threshold
     )
+    safety_gate = float(np.clip(
+        max(delta_collapse, 0.0)
+        + max(threshold_shift_norm, 0.0)
+        + max(delta_delay, 0.0),
+        0.0,
+        1.0,
+    ))
+    gated_delta_harm = float(delta_harm * safety_gate)
 
     # Penalty terms — soft-clip with tanh so unbounded counters can't dominate
     util_loss_n = float(np.tanh(util_loss / 10.0))
@@ -109,7 +141,7 @@ def defense_score(rows_no_def: list[dict], rows_def: list[dict],
     iv_n = float(np.tanh(iv_cost / 10.0))
 
     raw = (
-        w.harm_reduction * delta_harm
+        w.harm_reduction * gated_delta_harm
         + w.collapse_reduction * delta_collapse
         + w.threshold_shift * threshold_shift_norm
         - w.utility_loss * util_loss_n
@@ -125,6 +157,8 @@ def defense_score(rows_no_def: list[dict], rows_def: list[dict],
     return {
         "defense_score": score,
         "delta_harm_reduction": float(delta_harm),
+        "gated_delta_harm_reduction": float(gated_delta_harm),
+        "safety_gate": float(safety_gate),
         "delta_collapse": float(delta_collapse),
         "threshold_shift_raw": threshold_shift_raw,
         "threshold_shift_normalized": float(threshold_shift_norm),

@@ -1,8 +1,11 @@
 """LLM hook smoke tests: rule fallback must be deterministic and equivalent."""
 from wolfbench.agents.llm import (
-    RuleFallbackBackend, LLMPumpLeader, LLMFinfluencer, LLMWolfGuardAgent,
+    RuleFallbackBackend, LLMPumpLeader, LLMFinfluencer, LLMRuleAssistWolfGuardAgent,
+    LLMWolfGuardAgent,
+    VLLMChatBackend, _loads_json_dict,
 )
 from wolfbench.agents.wolfguard import WolfGuardConfig
+from wolfbench.defense import get_policy, get_track
 from wolfbench.env.environment import WolfBenchEnv
 from wolfbench.scenarios.base import load_scenario
 
@@ -50,3 +53,73 @@ def test_llm_count_sublinear_schedule():
         n_h = max(1, int(round(a * N)))
         got = strategic_leader_count(N, a, n_h)
         assert got == k, f"N={N} alpha={a}: expected {k}, got {got}"
+
+
+def test_vllm_backend_is_lazy_and_strict_by_default():
+    backend = VLLMChatBackend(model="qwen3-8b", base_url="http://127.0.0.1:9/v1")
+    assert backend.name == "vllm_chat"
+    assert backend.strict is True
+    assert backend.calls == 0
+
+
+def test_qwen_policy_factory_uses_vllm_without_calling_server():
+    policy = get_policy("qwen", model="qwen3-8b",
+                        base_url="http://127.0.0.1:9/v1")
+    assert "Qwen3-vLLM" in policy.name
+    assert policy.backend.name == "vllm_chat"
+    assert policy.backend.calls == 0
+
+
+def test_qwen_assisted_policy_factory_is_separate_track():
+    policy = get_policy("qwen_assisted", model="qwen3-8b",
+                        base_url="http://127.0.0.1:9/v1")
+    assert isinstance(policy, LLMRuleAssistWolfGuardAgent)
+    assert get_track("qwen_assisted") == "llm_assisted_rule"
+    assert get_track("qwen") == "llm_from_scratch"
+
+
+def test_llm_json_parser_strips_qwen_thinking_and_fences():
+    content = '<think>draft</think>\n```json\n{"asset_2": {"action": "warning"}}\n```'
+    assert _loads_json_dict(content) == {"asset_2": {"action": "warning"}}
+
+
+class CaptureBackend:
+    name = "capture"
+
+    def __init__(self, response=None):
+        self.user = ""
+        self.response = response or {}
+
+    def chat_json(self, system, user):
+        self.user = user
+        return self.response
+
+
+def test_llm_wolfguard_does_not_prompt_with_oracle_view():
+    backend = CaptureBackend()
+    agent = LLMWolfGuardAgent(backend=backend, config=WolfGuardConfig())
+    summary = {
+        "day": 1,
+        "market": {"asset_2": {"price": 4.0, "fundamental": 4.0}},
+        "social": {"asset_2": {}},
+        "recent_return": {"asset_2": 0.0},
+        "oracle_view": {"asset_2": {"harmful_pressure": 1.0}},
+    }
+    agent.decide(1, summary)
+    assert "oracle_view" not in backend.user
+    assert '"actions"' not in backend.user
+
+
+def test_llm_wolfguard_can_act_without_rule_action_seed():
+    backend = CaptureBackend({"asset_2": {"action": "warning", "risk": 0.6}})
+    agent = LLMWolfGuardAgent(backend=backend, config=WolfGuardConfig())
+    summary = {
+        "day": 1,
+        "market": {"asset_2": {"price": 4.0, "fundamental": 4.0}},
+        "social": {"asset_2": {}},
+        "recent_return": {"asset_2": 0.0},
+        "oracle_view": {},
+    }
+    actions = agent.decide(1, summary)
+    assert actions["asset_2"]["action"] == "warning"
+    assert actions["asset_2"]["risk"] == 0.6

@@ -82,16 +82,16 @@ class RuleWolfGuardPolicy(WolfGuardAgent):
 # ---------------------------------------------------------------- Oracle
 @dataclass
 class OracleWolfGuardPolicy:
-    """Upper-bound baseline: reads ``summary['oracle_view']`` (ground-truth
-    harmful pressure leaked by the env) and triggers proportional interventions.
+    """Upper-bound baseline: reads explicitly supplied ground-truth harmful
+    pressure and triggers proportional interventions.
 
     Excluded from the official leaderboard.
     """
     name: str = "Oracle-WolfGuard"
     config: WolfGuardConfig = field(default_factory=WolfGuardConfig)
-    risk_warning: float = 0.10
-    risk_cooldown: float = 0.25
-    risk_block: float = 0.40
+    risk_warning: float = 0.001
+    risk_cooldown: float = 0.005
+    risk_block: float = 0.02
     clean_baseline: dict = field(default_factory=dict)
 
     def fit_baseline(self, baseline):
@@ -101,37 +101,79 @@ class OracleWolfGuardPolicy:
         oracle = summary.get("oracle_view", {}) or {}
         out = {}
         for asset, info in oracle.items():
-            risk = float(info.get("harmful_pressure", 0.0))
-            if risk >= self.risk_block:
+            pressure = max(
+                float(info.get("active_harmful_share", 0.0)),
+                float(info.get("harmful_agent_share", 0.0)),
+                float(info.get("harmful_pressure", 0.0)),
+            )
+            if not info.get("is_attack_target", 0.0) and pressure <= 0.0:
+                continue
+            risk = min(1.0, pressure / max(self.risk_block, 1e-9))
+            if pressure >= self.risk_block:
                 action = "block"
-            elif risk >= self.risk_cooldown:
+            elif pressure >= self.risk_cooldown:
                 action = "cooldown"
-            elif risk >= self.risk_warning:
+            elif pressure >= self.risk_warning:
                 action = "warning"
             else:
                 continue
             out[asset] = make_intervention(asset, action, risk=risk,
                                            reason="oracle",
-                                           components={"oracle": risk})
+                                           components={"oracle_pressure": pressure})
         return out
 
 
 # ---------------------------------------------------------------- LLM
-def _llm_policy_factory(model: str | None):
+def _llm_policy_factory(model: str | None = None,
+                        provider: str | None = None,
+                        base_url: str | None = None,
+                        api_key: str | None = None,
+                        strict: bool | None = None,
+                        display_name: str | None = None,
+                        assisted: bool = False):
     """Return an ``LLMWolfGuardAgent`` wrapper. Imported lazily so users
     without an OpenAI client installed can still use rule baselines."""
     from wolfbench.agents.llm import (
-        LLMWolfGuardAgent, OpenAIChatBackend, RuleFallbackBackend,
+        LLMRuleAssistWolfGuardAgent, LLMWolfGuardAgent,
+        RuleFallbackBackend, make_chat_backend,
     )
-    backend = OpenAIChatBackend(model=model) if model else RuleFallbackBackend()
-    agent = LLMWolfGuardAgent(backend=backend, config=WolfGuardConfig())
-    agent.name = f"LLM-WolfGuard({model or 'rule_fallback'})"
+    if model or provider or base_url or api_key:
+        backend = make_chat_backend(
+            provider=provider, model=model, base_url=base_url,
+            api_key=api_key, strict=strict,
+        )
+    else:
+        backend = RuleFallbackBackend()
+    agent_cls = LLMRuleAssistWolfGuardAgent if assisted else LLMWolfGuardAgent
+    agent = agent_cls(backend=backend, config=WolfGuardConfig())
+    agent.name = display_name or f"LLM-WolfGuard({getattr(backend, 'model', 'rule_fallback')})"
     return agent
 
 
 class LLMWolfGuardPolicy:
     """Factory shim for documentation; instantiate via ``get_policy('llm')``."""
     name: str = "LLM-WolfGuard"
+
+
+class QwenVLLMWolfGuardPolicy:
+    """Factory shim; instantiate via ``get_policy('qwen')``."""
+    name: str = "Qwen3-vLLM-WolfGuard"
+
+
+TRACKS = {
+    "noguard": "control",
+    "random": "control",
+    "rule": "rule_baseline",
+    "oracle": "oracle_upper_bound",
+    "llm": "llm_from_scratch",
+    "qwen": "llm_from_scratch",
+    "llm_assisted": "llm_assisted_rule",
+    "qwen_assisted": "llm_assisted_rule",
+}
+
+
+def get_track(name: str) -> str:
+    return TRACKS.get(name.lower(), "submission")
 
 
 # ---------------------------------------------------------------- Registry
@@ -146,16 +188,37 @@ BASELINES = {
 def get_policy(name: str, **kwargs):
     """Instantiate a baseline by short name.
 
-    ``name`` ∈ ``{noguard, random, rule, oracle, llm}``. ``llm`` accepts a
-    ``model`` kwarg (defaults to the deterministic rule fallback).
+    ``name`` ∈ ``{noguard, random, rule, oracle, llm, qwen, llm_assisted,
+    qwen_assisted}``. ``llm`` accepts
+    a ``model`` kwarg (defaults to the deterministic rule fallback). ``qwen``
+    uses the local vLLM OpenAI-compatible endpoint by default.
     """
     key = name.lower()
-    if key == "llm":
-        return _llm_policy_factory(kwargs.get("model"))
-    kwargs = {k: v for k, v in kwargs.items() if k != "model"}
+    if key in {"llm", "llm_assisted"}:
+        return _llm_policy_factory(
+            model=kwargs.get("model"),
+            provider=kwargs.get("provider"),
+            base_url=kwargs.get("base_url"),
+            api_key=kwargs.get("api_key"),
+            strict=kwargs.get("strict"),
+            assisted=key.endswith("_assisted"),
+        )
+    if key in {"qwen", "qwen_assisted"}:
+        model = kwargs.get("model") or "qwen3-8b"
+        return _llm_policy_factory(
+            model=model,
+            provider="vllm",
+            base_url=kwargs.get("base_url"),
+            api_key=kwargs.get("api_key"),
+            strict=True if kwargs.get("strict") is None else kwargs.get("strict"),
+            display_name=f"Qwen3-vLLM{'-assisted' if key.endswith('_assisted') else ''}({model})",
+            assisted=key.endswith("_assisted"),
+        )
+    kwargs = {k: v for k, v in kwargs.items()
+              if k not in {"model", "provider", "base_url", "api_key", "strict"}}
     if key not in BASELINES:
         raise ValueError(
             f"Unknown defense baseline '{name}'. "
-            f"Available: {sorted(BASELINES) + ['llm']}"
+            f"Available: {sorted(BASELINES) + ['llm', 'qwen', 'llm_assisted', 'qwen_assisted']}"
         )
     return BASELINES[key](**kwargs)

@@ -9,6 +9,7 @@ import numpy as np
 import yaml
 
 from wolfbench.agents.wolfguard import WolfGuardAgent, WolfGuardConfig
+from wolfbench.defense.isolation import SubprocessWolfGuardPolicy
 from wolfbench.defense import get_policy
 from wolfbench.env.environment import WolfBenchEnv
 from wolfbench.metrics import defense_score, threshold_shift
@@ -56,15 +57,27 @@ def list_scenarios():
                    "(capped by scenario leader_count_max).")
 @click.option("--llm-model", default=None,
               help="OpenAI-compatible model id; if unset uses RuleFallbackBackend.")
+@click.option("--llm-provider", default="openai",
+              type=click.Choice(["openai", "vllm"]),
+              help="Backend provider for --llm-leaders.")
+@click.option("--llm-base-url", default=None,
+              help="OpenAI-compatible base URL, e.g. http://127.0.0.1:8000/v1.")
+@click.option("--llm-api-key", default=None,
+              help="API key for the OpenAI-compatible endpoint; vLLM accepts EMPTY.")
 @click.option("--out", type=click.Path(), default=None,
               help="Optional JSON output path.")
-def run_episode(scenario, alpha, n_society, seed, defense, llm_leaders, llm_model, out):
+def run_episode(scenario, alpha, n_society, seed, defense, llm_leaders,
+                llm_model, llm_provider, llm_base_url, llm_api_key, out):
     """Run a single 30-day episode and print summary metrics."""
     scen = load_scenario(scenario)
     backend = None
-    if llm_leaders > 0 and llm_model:
-        from wolfbench.agents.llm import OpenAIChatBackend
-        backend = OpenAIChatBackend(model=llm_model)
+    if llm_leaders > 0 and (llm_model or llm_provider == "vllm" or llm_base_url):
+        from wolfbench.agents.llm import make_chat_backend
+        backend = make_chat_backend(
+            provider=llm_provider, model=llm_model,
+            base_url=llm_base_url, api_key=llm_api_key,
+            strict=True,
+        )
     wg = None
     base = None
     if defense:
@@ -77,6 +90,7 @@ def run_episode(scenario, alpha, n_society, seed, defense, llm_leaders, llm_mode
     summary = _summarise(res)
     summary["n_llm_leaders"] = llm_leaders
     summary["llm_model"] = llm_model
+    summary["llm_provider"] = llm_provider
     click.echo(json.dumps(summary, indent=2))
     if out:
         Path(out).write_text(json.dumps(summary, indent=2))
@@ -167,25 +181,50 @@ def _resolve_seeds(split: str | None, seeds_arg: str | None) -> list[int]:
     return list(splits[split]["seeds"])
 
 
-def _import_policy(spec: str):
+def _import_policy(spec: str, **kwargs):
     """Load a user-supplied policy via 'pkg.mod:ClassName'."""
     import importlib
     mod_name, cls_name = spec.split(":", 1)
     mod = importlib.import_module(mod_name)
-    return getattr(mod, cls_name)()
+    return getattr(mod, cls_name)(**kwargs)
 
 
-def _run_one(scenario_id, n_society, alpha, seed, policy):
+def _policy_kwargs(llm_model=None, llm_provider=None, llm_base_url=None, llm_api_key=None) -> dict:
+    return {
+        "model": llm_model,
+        "provider": llm_provider,
+        "base_url": llm_base_url,
+        "api_key": llm_api_key,
+    }
+
+
+def _make_policy(spec: str, kwargs: dict, isolated: bool):
+    policy_kwargs = {} if ":" in spec else kwargs
+    if isolated:
+        return SubprocessWolfGuardPolicy(spec, kwargs=policy_kwargs)
+    return _import_policy(spec, **policy_kwargs) if ":" in spec else get_policy(spec, **policy_kwargs)
+
+
+def _run_one(scenario_id, n_society, alpha, seed, defense_spec, policy_kwargs=None,
+             isolated=True):
     scen = load_scenario(scenario_id)
     base = calibrate_clean_baseline(n_society=min(n_society, 1000))
-    if hasattr(policy, "fit_baseline"):
-        policy.fit_baseline(base)
-    wg = None if policy.__class__.__name__ == "NoGuardPolicy" else policy
-    env = WolfBenchEnv(scen, n_society=n_society, alpha=alpha, seed=seed,
-                       wolfguard=wg, baseline=base)
-    res = env.run()
-    row = _summarise(res)
-    row["defense"] = getattr(policy, "name", "NoGuard")
+    policy_kwargs = policy_kwargs or {}
+    policy = _make_policy(defense_spec, policy_kwargs, isolated=isolated)
+    try:
+        is_noguard = defense_spec.lower() == "noguard" if ":" not in defense_spec else policy.__class__.__name__ == "NoGuardPolicy"
+        wg = None if is_noguard else policy
+        env = WolfBenchEnv(
+            scen, n_society=n_society, alpha=alpha, seed=seed,
+            wolfguard=wg, baseline=base,
+            expose_oracle=(defense_spec.lower() == "oracle" if ":" not in defense_spec else False),
+        )
+        res = env.run()
+        row = _summarise(res)
+        row["defense"] = getattr(policy, "name", "NoGuard")
+    finally:
+        if hasattr(policy, "close"):
+            policy.close()
     return row
 
 
@@ -197,35 +236,51 @@ def _run_one(scenario_id, n_society, alpha, seed, policy):
 @click.option("--alphas", default="0,0.005,0.01,0.02,0.05,0.1", type=str)
 @click.option("--n-society", "n_society", default=1000, type=int)
 @click.option("--split", default="public_dev",
-              type=click.Choice(["public_dev", "public_test",
-                                 "hidden_test", "stress_test"]))
+              type=click.Choice(["public_dev", "public_test"]))
 @click.option("--seeds", default=None,
               help="Comma-separated seeds, overrides --split.")
 @click.option("--llm-model", default=None,
               help="Used when --defense=llm.")
+@click.option("--llm-provider", default=None,
+                  type=click.Choice(["openai", "vllm"]),
+                  help="Used when --defense=llm; --defense=qwen defaults to vllm.")
+@click.option("--llm-base-url", default=None,
+                  help="OpenAI-compatible base URL, e.g. http://127.0.0.1:8000/v1.")
+@click.option("--llm-api-key", default=None,
+                  help="API key for the OpenAI-compatible endpoint; vLLM accepts EMPTY.")
 @click.option("--out", type=click.Path(), default=None)
+@click.option("--isolate/--no-isolate", default=True,
+              help="Run defense policy in a spawned subprocess JSON RPC sandbox.")
 def evaluate_cmd(defense_name, scenario, alphas, n_society, split, seeds,
-                 llm_model, out):
+                      llm_model, llm_provider, llm_base_url, llm_api_key, out,
+                      isolate):
     """Evaluate a defense submission. Reports DefenseScore + ThresholdShift."""
     alpha_grid = _parse_floats(alphas)
     seed_list = _resolve_seeds(split, seeds)
-    policy = (_import_policy(defense_name) if ":" in defense_name
-              else get_policy(defense_name, model=llm_model))
-    no_pol = get_policy("noguard")
+    kwargs = _policy_kwargs(llm_model, llm_provider, llm_base_url, llm_api_key)
+    if ":" in defense_name:
+        display_name = defense_name
+    else:
+        display_policy = _make_policy(defense_name, kwargs, isolated=False)
+        display_name = getattr(display_policy, "name", defense_name)
 
     rows_no, rows_def = [], []
-    for a in alpha_grid:
-        for s in seed_list:
-            rows_no.append(_run_one(scenario, n_society, a, s, no_pol))
-            rows_def.append(_run_one(scenario, n_society, a, s, policy))
+    episode_grid = [(a, s) for a in alpha_grid for s in seed_list]
+    rng = np.random.default_rng(0)
+    rng.shuffle(episode_grid)
+    for a, s in episode_grid:
+        rows_no.append(_run_one(scenario, n_society, a, s, "noguard", isolated=False))
+        rows_def.append(_run_one(scenario, n_society, a, s, defense_name,
+                                 policy_kwargs=kwargs, isolated=isolate))
 
     report = {
-        "defense": getattr(policy, "name", defense_name),
+        "defense": display_name,
         "scenario": scenario,
         "n_society": n_society,
         "alphas": alpha_grid,
         "split": split,
         "seeds": seed_list,
+        "isolated": isolate,
         **defense_score(rows_no, rows_def, alphas=alpha_grid),
         **threshold_shift(rows_no, rows_def, alpha_grid),
     }

@@ -32,6 +32,65 @@ class EpisodeResult:
     config_snapshot: dict[str, Any] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class EvaluatorConfig:
+    """Evaluator-owned intervention accounting parameters.
+
+    These values must come from the benchmark harness, not from a submitted
+    policy object, so submissions cannot alter costs or false-positive rules.
+    """
+    err_trade_exposure_threshold: float = 0.3
+    intervention_cost_warning: float = 0.01
+    intervention_cost_cooldown: float = 0.05
+    intervention_cost_block: float = 0.10
+
+
+VALID_INTERVENTIONS = {"none", "warning", "cooldown", "block"}
+
+
+def _nonnegative_finite(value: float, default: float) -> float:
+    try:
+        val = float(value)
+    except (TypeError, ValueError):
+        return default
+    if not np.isfinite(val):
+        return default
+    return max(0.0, val)
+
+
+def validate_interventions(actions: Any, valid_assets: set[str]) -> dict[str, dict]:
+    """Return a sanitized per-asset intervention map.
+
+    Unknown assets and malformed entries are ignored. Action names are limited
+    to the official enum, risk is finite and clipped to [0, 1], and the dict key
+    is treated as the authoritative asset id.
+    """
+    if not isinstance(actions, dict):
+        return {}
+    clean: dict[str, dict] = {}
+    for asset, raw in actions.items():
+        if asset not in valid_assets or not isinstance(raw, dict):
+            continue
+        action = raw.get("action", "none")
+        if action not in VALID_INTERVENTIONS:
+            action = "none"
+        try:
+            risk = float(raw.get("risk", 0.0))
+        except (TypeError, ValueError):
+            risk = 0.0
+        if not np.isfinite(risk):
+            risk = 0.0
+        risk = float(np.clip(risk, 0.0, 1.0))
+        clean[asset] = {
+            "asset": asset,
+            "action": action,
+            "risk": risk,
+            "reason": str(raw.get("reason", ""))[:256],
+            "components": raw.get("components", {}) if isinstance(raw.get("components", {}), dict) else {},
+        }
+    return clean
+
+
 class WolfBenchEnv:
     """Main 30-day environment.
 
@@ -46,7 +105,9 @@ class WolfBenchEnv:
                  baseline: dict | None = None,
                  placement_override: str | None = None,
                  llm_backend=None,
-                 n_llm_leaders: int = 0):
+                 n_llm_leaders: int = 0,
+                 expose_oracle: bool = False,
+                 evaluator_config: EvaluatorConfig | None = None):
         self.scenario = scenario
         self.n_society = n_society
         self.alpha = alpha
@@ -79,6 +140,26 @@ class WolfBenchEnv:
 
         self.social = SocialEnv(self.graph, scenario, np.random.default_rng(seed + 23))
         self.wolfguard = wolfguard
+        self.expose_oracle = bool(expose_oracle)
+        cfg = evaluator_config or EvaluatorConfig()
+        self.evaluator_config = EvaluatorConfig(
+            err_trade_exposure_threshold=_nonnegative_finite(
+                cfg.err_trade_exposure_threshold,
+                EvaluatorConfig.err_trade_exposure_threshold,
+            ),
+            intervention_cost_warning=_nonnegative_finite(
+                cfg.intervention_cost_warning,
+                EvaluatorConfig.intervention_cost_warning,
+            ),
+            intervention_cost_cooldown=_nonnegative_finite(
+                cfg.intervention_cost_cooldown,
+                EvaluatorConfig.intervention_cost_cooldown,
+            ),
+            intervention_cost_block=_nonnegative_finite(
+                cfg.intervention_cost_block,
+                EvaluatorConfig.intervention_cost_block,
+            ),
+        )
         if self.wolfguard is not None and baseline is not None:
             self.wolfguard.fit_baseline(baseline)
 
@@ -87,8 +168,10 @@ class WolfBenchEnv:
         self._initial_harmful_wealth = sum(a.portfolio.initial_wealth for a in self.society.attackers)
         self._intervention_cost = 0.0
         self._false_positive_count = 0
+        self._false_positive_opportunities = 0
         self._intervention_count = 0
         self._utility_loss = 0.0
+        self._oracle_suppressed_assets: set[str] = set()
 
     # -----------------------------------------------------------------
 
@@ -123,6 +206,7 @@ class WolfBenchEnv:
 
         for day in range(H):
             self.market.begin_day()
+            self._oracle_suppressed_assets.clear()
             prices = {aid: s.price for aid, s in self.market.assets.items()}
             recent_ret = {aid: float(np.mean(recent_returns[aid][-3:])) if recent_returns[aid] else 0.0
                           for aid in self.market.assets}
@@ -131,7 +215,10 @@ class WolfBenchEnv:
             actions: dict[str, dict] = {}
             if self.wolfguard is not None:
                 summary = self._system_summary(day, recent_ret)
-                actions = self.wolfguard.decide(day, summary)
+                actions = validate_interventions(
+                    self.wolfguard.decide(day, summary),
+                    set(self.market.assets),
+                )
                 self._apply_defense(day, actions)
 
             # --- agent decisions ---
@@ -139,6 +226,9 @@ class WolfBenchEnv:
             orders: list[Order] = []
             messages: list[Message] = []
             for ag in self.society.all_agents:
+                if (getattr(ag, "is_harmful", False)
+                        and getattr(ag, "target_asset", None) in self._oracle_suppressed_assets):
+                    continue
                 if hasattr(ag, "decide"):
                     o, m = ag.decide(day, observation)
                     orders.extend(o)
@@ -193,7 +283,7 @@ class WolfBenchEnv:
             metrics.wealth_transfer = metrics.harmful_profit / abs(metrics.retail_loss_30d)
         metrics.intervention_cost = self._intervention_cost
         metrics.utility_loss = self._utility_loss
-        denom = max(self._intervention_count, 1)
+        denom = max(self._false_positive_opportunities, 1)
         metrics.false_positive_rate = self._false_positive_count / denom
 
         return EpisodeResult(
@@ -256,21 +346,24 @@ class WolfBenchEnv:
     def _system_summary(self, day, recent_ret) -> dict[str, Any]:
         market_view = self.market.snapshot()
         social_view = {a: self.social.asset_signal(a) for a in self.market.assets}
-        oracle_view = self._oracle_view()
-        return {
+        summary = {
             "day": day,
             "market": market_view,
             "social": social_view,
             "recent_return": recent_ret,
-            "oracle_view": oracle_view,
         }
+        if self.expose_oracle:
+            summary["oracle_view"] = self._oracle_view(day)
+        return summary
 
-    def _oracle_view(self) -> dict[str, dict[str, float]]:
+    def _oracle_view(self, day: int) -> dict[str, dict[str, float]]:
         """Ground-truth per-asset harmful pressure. Used only by the Oracle
         defense baseline (upper bound); regular submissions ignore this key.
         """
         per_asset_harmful_eq = {a: 0.0 for a in self.market.assets}
         per_asset_total_eq = {a: 1e-9 for a in self.market.assets}
+        per_asset_harmful_count = {a: 0 for a in self.market.assets}
+        per_asset_active_count = {a: 0 for a in self.market.assets}
         prices = {aid: s.price for aid, s in self.market.assets.items()}
         for ag in self.society.all_agents:
             equity = ag.portfolio.mark_to_market(prices)
@@ -278,23 +371,56 @@ class WolfBenchEnv:
             per_asset_total_eq[asset] += max(equity, 0.0)
             if getattr(ag, "is_harmful", False):
                 per_asset_harmful_eq[asset] += max(equity, 0.0)
+                per_asset_harmful_count[asset] += 1
+                if self._harmful_agent_active(ag, day):
+                    per_asset_active_count[asset] += 1
         return {
             a: {
                 "harmful_pressure": float(
                     per_asset_harmful_eq[a] / per_asset_total_eq[a]
                 ),
+                "harmful_agent_count": float(per_asset_harmful_count[a]),
+                "active_harmful_count": float(per_asset_active_count[a]),
+                "harmful_agent_share": float(
+                    per_asset_harmful_count[a] / max(self.society.n_total, 1)
+                ),
+                "active_harmful_share": float(
+                    per_asset_active_count[a] / max(self.society.n_total, 1)
+                ),
+                "is_attack_target": float(
+                    a == self.target_asset and self.society.n_harmful > 0
+                ),
             }
             for a in self.market.assets
         }
 
+    def _harmful_agent_active(self, agent, day: int) -> bool:
+        if not getattr(agent, "is_harmful", False):
+            return False
+        windows = (
+            "accumulate_days", "promote_days", "dump_days", "sell_days",
+            "wash_days", "withdraw_days",
+        )
+        found_window = False
+        for attr in windows:
+            window = getattr(agent, attr, None)
+            if window is None:
+                continue
+            found_window = True
+            start, end = int(window[0]), int(window[1])
+            if start <= day <= end:
+                return True
+        return not found_window
+
     def _apply_defense(self, day: int, actions: dict[str, dict]) -> None:
-        cfg = self.wolfguard.config
+        cfg = self.evaluator_config
         for asset, act in actions.items():
             action = act["action"]
             if action == "none":
                 continue
             self._intervention_count += 1
             cost = 0.0
+            reason = act.get("reason", "")
             if action == "warning":
                 cost = cfg.intervention_cost_warning
                 for r in self.society.retail:
@@ -306,8 +432,17 @@ class WolfBenchEnv:
                     r.warning_level[asset] = max(r.warning_level.get(asset, 0.0), act["risk"])
             elif action == "block":
                 cost = cfg.intervention_cost_block
+                if reason == "oracle":
+                    self._oracle_suppressed_assets.add(asset)
+                    for r in self.society.retail:
+                        r.blocked_today[asset] = True
+                        r.warning_level[asset] = max(r.warning_level.get(asset, 0.0), act["risk"])
+                    self._intervention_cost += cost
+                    self._utility_loss += cost
+                    continue
                 # Block only suspected erroneous trades: high harmful exposure
                 for r in self.society.retail:
+                    self._false_positive_opportunities += 1
                     bb = r.last_belief_breakdown.get(asset, {})
                     if bb.get("harmful_exposure", 0.0) > cfg.err_trade_exposure_threshold:
                         r.blocked_today[asset] = True
@@ -322,6 +457,9 @@ class WolfBenchEnv:
         s = self.market.assets[self.target_asset]
         price_disloc = abs(s.price - s.fundamental) / max(s.fundamental, 1e-6)
         spread_z = (s.spread_bps / max(self.market.base_spread_bps, 1e-6)) - 1.0
+        spoof_depth = s.spoof_buy_size + s.spoof_sell_size
+        cancel_rate = s.cancel_count / max(s.order_count, 1)
+        spoof_stress = cancel_rate * np.log1p(spoof_depth / max(s.base_liquidity, 1e-6))
 
         prices = {aid: a.price for aid, a in self.market.assets.items()}
         retail_now = sum(a.portfolio.mark_to_market(prices) for a in self.society.retail)
@@ -340,7 +478,7 @@ class WolfBenchEnv:
 
         return {
             "price_dislocation": float(price_disloc),
-            "liquidity_stress": float(max(spread_z, 0.0)),
+            "liquidity_stress": float(max(spread_z, spoof_stress, 0.0)),
             "retail_loss": float(retail_loss_pct),
             "social_cascade": float(min(cascade, 1.0)),
             "wealth_transfer": float(wt),
