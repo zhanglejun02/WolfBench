@@ -5,7 +5,9 @@ defense policies compare on DefenseScore + ThresholdShift?
 
 Outputs:
 * ``outputs/defense_benchmark/exp6/data.csv``       — per-(defense, scenario, alpha, seed) row
-* ``outputs/defense_benchmark/exp6/leaderboard.csv``
+* ``outputs/defense_benchmark/exp6/leaderboard_by_scenario.csv`` — per-scenario/N aggregate
+* ``outputs/defense_benchmark/exp6/leaderboard.csv`` — display leaderboard
+* ``outputs/defense_benchmark/exp6/leaderboard_overall.csv`` — display leaderboard alias
 * ``outputs/defense_benchmark/exp6/summary.json``
 * ``outputs/defense_benchmark/exp6/leaderboard.png`` — DefenseScore by defense / scenario
 * ``outputs/defense_benchmark/exp6/threshold_shift.png``
@@ -14,7 +16,6 @@ from __future__ import annotations
 
 import csv
 import os
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -54,6 +55,11 @@ N_GRID = _env_int_list("WOLFBENCH_EXP6_N_GRID", os.getenv("WOLFBENCH_EXP6_N_SOCI
 SEEDS = _env_int_list("WOLFBENCH_EXP6_SEEDS", "1,2,3,4,5")
 CI_BOOT = int(os.getenv("WOLFBENCH_EXP6_CI_BOOT", "2000"))
 OUT_NAME = os.getenv("WOLFBENCH_EXP6_OUT", "exp6")
+DISPLAY_SCENARIOS = ("s1", "s2", "s3", "s4")
+DISPLAY_FIELDNAMES = [
+    "Defense model", "S1", "S2", "S3", "S4",
+    "Avg DefenseScore", "Avg ThresholdShift", "Worst Score",
+]
 
 
 def _alphas_for(scenario: str) -> list[float]:
@@ -82,6 +88,117 @@ def _official_score(defense_name: str, raw_score: float) -> float:
     return float(raw_score)
 
 
+def _to_float(value, default: float = 0.0) -> float:
+    if value is None:
+        return default
+    if isinstance(value, str) and value.strip() in {"", "None", "none", "null", "nan"}:
+        return default
+    return float(value)
+
+
+def _mean(values: list[float]) -> float:
+    return float(np.mean(values)) if values else 0.0
+
+
+def _defenses_in_order(rows: list[dict], defenses: list[str] | None = None) -> list[str]:
+    row_defenses = {str(r.get("defense", r.get("Defense model", ""))) for r in rows}
+    ordered: list[str] = []
+    for defense_name in defenses or []:
+        if defense_name in row_defenses and defense_name not in ordered:
+            ordered.append(defense_name)
+    for row in rows:
+        defense_name = str(row.get("defense", row.get("Defense model", "")))
+        if defense_name and defense_name not in ordered:
+            ordered.append(defense_name)
+    return ordered
+
+
+def _build_display_leaderboard(
+    scenario_leaderboard: list[dict],
+    defenses: list[str] | None = None,
+    scenarios: tuple[str, ...] = DISPLAY_SCENARIOS,
+) -> list[dict]:
+    """Build the public S1-S4 defense leaderboard from per-scenario rows."""
+    by_defense_scenario: dict[tuple[str, str], list[dict]] = {}
+    for row in scenario_leaderboard:
+        defense_name = str(row.get("defense", row.get("Defense model", "")))
+        scenario = str(row.get("scenario", "")).lower()
+        if defense_name and scenario in scenarios:
+            by_defense_scenario.setdefault((defense_name, scenario), []).append(row)
+
+    display_rows: list[dict] = []
+    for defense_name in _defenses_in_order(scenario_leaderboard, defenses):
+        scenario_scores: dict[str, float | None] = {}
+        scenario_shifts: list[float] = []
+        for scenario in scenarios:
+            rows = by_defense_scenario.get((defense_name, scenario), [])
+            if rows:
+                scenario_scores[scenario] = _mean([
+                    _to_float(r.get("defense_score")) for r in rows
+                ])
+                scenario_shifts.append(_mean([
+                    _to_float(r.get("threshold_shift"), default=0.0) for r in rows
+                ]))
+            else:
+                scenario_scores[scenario] = None
+
+        available_scores = [v for v in scenario_scores.values() if v is not None]
+        display_row = {
+            "Defense model": defense_name,
+            "S1": scenario_scores["s1"] if scenario_scores["s1"] is not None else "",
+            "S2": scenario_scores["s2"] if scenario_scores["s2"] is not None else "",
+            "S3": scenario_scores["s3"] if scenario_scores["s3"] is not None else "",
+            "S4": scenario_scores["s4"] if scenario_scores["s4"] is not None else "",
+            "Avg DefenseScore": _mean(available_scores),
+            "Avg ThresholdShift": _mean(scenario_shifts),
+            "Worst Score": min(available_scores) if available_scores else 0.0,
+        }
+        display_rows.append(display_row)
+
+    display_rows.sort(key=lambda r: _to_float(r["Avg DefenseScore"]), reverse=True)
+    return display_rows
+
+
+def _write_display_csv(rows: list[dict], path) -> None:
+    with open(path, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=DISPLAY_FIELDNAMES)
+        w.writeheader()
+        for row in rows:
+            w.writerow(row)
+
+
+def _format_score(value) -> str:
+    if value == "" or value is None:
+        return ""
+    return f"{float(value):.2f}"
+
+
+def _format_shift(value) -> str:
+    return f"{_to_float(value):.4f}"
+
+
+def _scenario_metric_means(
+    scenario_leaderboard: list[dict],
+    defense_name: str,
+    metric: str,
+    scenarios: tuple[str, ...] = DISPLAY_SCENARIOS,
+    none_as_zero: bool = False,
+) -> list[float]:
+    vals: list[float] = []
+    for scenario in scenarios:
+        rows = [
+            r for r in scenario_leaderboard
+            if str(r.get("defense")) == defense_name and str(r.get("scenario", "")).lower() == scenario
+        ]
+        default = 0.0 if none_as_zero else float("nan")
+        metric_vals = [_to_float(r.get(metric), default=default) for r in rows]
+        if metric_vals:
+            vals.append(_mean(metric_vals))
+        else:
+            vals.append(0.0)
+    return vals
+
+
 def main():
     out = benchmark_exp_dir(OUT_NAME)
     alpha_grids = {s: _alphas_for(s) for s in SCENARIOS}
@@ -102,8 +219,9 @@ def main():
 
     write_csv(all_rows, out / "data.csv")
 
-    # Aggregate leaderboard
-    leaderboard = []
+    # Aggregate per-scenario leaderboard rows. These preserve the raw metric
+    # components used by summary.json and downstream analysis.
+    scenario_leaderboard = []
     for scen in SCENARIOS:
         alphas = _alphas_for(scen)
         for n_society in N_GRID:
@@ -114,7 +232,7 @@ def main():
                           and int(r["n_society"]) == n_society and r["defense"] == d]
                 score = defense_score(rows_no, rows_d, alphas=alphas)
                 shift = threshold_shift(rows_no, rows_d, alphas)
-                leaderboard.append({
+                scenario_leaderboard.append({
                     "scenario": scen,
                     "n_society": n_society,
                     "defense": d,
@@ -125,21 +243,24 @@ def main():
                     **shift,
                 })
 
-    # Write leaderboard csv
-    with open(out / "leaderboard.csv", "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=list(leaderboard[0].keys()))
+    with open(out / "leaderboard_by_scenario.csv", "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=list(scenario_leaderboard[0].keys()))
         w.writeheader()
-        for r in leaderboard:
+        for r in scenario_leaderboard:
             w.writerow(r)
 
-    overall = []
+    display_leaderboard = _build_display_leaderboard(scenario_leaderboard, DEFENSES)
+    _write_display_csv(display_leaderboard, out / "leaderboard.csv")
+    _write_display_csv(display_leaderboard, out / "leaderboard_overall.csv")
+
+    overall_metrics = []
     for d in DEFENSES:
-        rows = [r for r in leaderboard if r["defense"] == d]
+        rows = [r for r in scenario_leaderboard if r["defense"] == d]
         scores = [r["defense_score"] for r in rows]
         official_scores = [r["official_score"] for r in rows]
         ci_low, ci_high = bootstrap_ci(scores, n_boot=CI_BOOT)
         official_ci_low, official_ci_high = bootstrap_ci(official_scores, n_boot=CI_BOOT)
-        overall.append({
+        overall_metrics.append({
             "defense": d,
             "track": get_track(d),
             "eligible": d in ELIGIBLE_DEFENSES,
@@ -159,40 +280,19 @@ def main():
             "false_positive_rate_mean": float(np.mean([r["false_positive_rate"] for r in rows])),
         })
 
-    with open(out / "leaderboard_overall.csv", "w", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=list(overall[0].keys()))
-        w.writeheader()
-        for r in sorted(overall, key=lambda x: x["official_score_mean"], reverse=True):
-            w.writerow(r)
-
     with open(out / "leaderboard.md", "w") as f:
-        f.write("# WolfBench Exp6 Baseline Leaderboard\n\n")
+        f.write("# WolfBench Exp6 Defense Leaderboard\n\n")
         f.write(f"N={N_GRID}, alpha_grids={alpha_grids}, seeds={SEEDS}\n\n")
-        f.write("Control tracks are diagnostic only: their official score is capped at 0 while raw DefenseScore is still reported. Oracle upper bounds are listed separately and are not eligible for the competitive leaderboard.\n\n")
-        f.write("## Eligible defenses\n\n")
-        f.write("| rank | track | defense | OfficialScore mean | 95% CI | raw DefenseScore mean | raw 95% CI | mean ThresholdShift | mean CollapseRate | mean UtilityLoss | mean FP |\n")
-        f.write("|---:|---|---|---:|---:|---:|---:|---:|---:|---:|---:|\n")
-        eligible_rows = [r for r in overall if r["eligible"]]
-        for rank, r in enumerate(sorted(eligible_rows, key=lambda x: x["official_score_mean"], reverse=True), 1):
+        f.write("S1-S4 are mean raw DefenseScore values for each scenario, averaged across N. Avg ThresholdShift treats missing per-scenario threshold_shift values as 0.0.\n\n")
+        f.write("| Defense model | S1 | S2 | S3 | S4 | Avg DefenseScore | Avg ThresholdShift | Worst Score |\n")
+        f.write("|---|---:|---:|---:|---:|---:|---:|---:|\n")
+        for r in display_leaderboard:
             f.write(
-                f"| {rank} | {r['track']} | {r['defense']} | {r['official_score_mean']:.2f} | "
-                f"[{r['official_score_ci_low']:.2f}, {r['official_score_ci_high']:.2f}] | "
-                f"{r['defense_score_mean']:.2f} | "
-                f"[{r['defense_score_ci_low']:.2f}, {r['defense_score_ci_high']:.2f}] | "
-                f"{r['threshold_shift_mean']:.4f} | "
-                f"{r['collapse_rate_mean']:.3f} | {r['utility_loss_mean']:.3f} | "
-                f"{r['false_positive_rate_mean']:.3f} |\n"
+                f"| {r['Defense model']} | {_format_score(r['S1'])} | {_format_score(r['S2'])} | "
+                f"{_format_score(r['S3'])} | {_format_score(r['S4'])} | "
+                f"{_format_score(r['Avg DefenseScore'])} | {_format_shift(r['Avg ThresholdShift'])} | "
+                f"{_format_score(r['Worst Score'])} |\n"
             )
-        upper_rows = [r for r in overall if not r["eligible"]]
-        if upper_rows:
-            f.write("\n## Upper bounds\n\n")
-            f.write("| track | defense | OfficialScore mean | raw DefenseScore mean | mean ThresholdShift |\n")
-            f.write("|---|---|---:|---:|---:|\n")
-            for r in sorted(upper_rows, key=lambda x: x["official_score_mean"], reverse=True):
-                f.write(
-                    f"| {r['track']} | {r['defense']} | {r['official_score_mean']:.2f} | "
-                    f"{r['defense_score_mean']:.2f} | {r['threshold_shift_mean']:.4f} |\n"
-                )
 
     write_json({
         "eligible_defenses": ELIGIBLE_DEFENSES,
@@ -200,22 +300,22 @@ def main():
         "defenses": DEFENSES, "scenarios": SCENARIOS,
         "alpha_grids": alpha_grids,
         "n_grid": N_GRID, "seeds": SEEDS,
-        "leaderboard": leaderboard,
-        "overall": overall,
+        "leaderboard": scenario_leaderboard,
+        "overall": overall_metrics,
+        "display_leaderboard": display_leaderboard,
     }, out / "summary.json")
 
     # ---- Plot DefenseScore bars ----
     fig, ax = plt.subplots(figsize=(9, 5))
-    width = min(0.8 / max(len(DEFENSES), 1), 0.18)
-    xlabels = [f"{s}\nN={n}" for s in SCENARIOS for n in N_GRID]
+    ordered_defenses = [r["Defense model"] for r in display_leaderboard]
+    width = min(0.8 / max(len(ordered_defenses), 1), 0.18)
+    xlabels = [s.upper() for s in DISPLAY_SCENARIOS]
     x = np.arange(len(xlabels))
-    for i, d in enumerate(DEFENSES):
-        vals = [next(r["defense_score"] for r in leaderboard
-                     if r["scenario"] == s and r["n_society"] == n and r["defense"] == d)
-                for s in SCENARIOS for n in N_GRID]
-        ax.bar(x + (i - (len(DEFENSES) - 1) / 2) * width, vals, width, label=d)
+    for i, d in enumerate(ordered_defenses):
+        vals = _scenario_metric_means(scenario_leaderboard, d, "defense_score")
+        ax.bar(x + (i - (len(ordered_defenses) - 1) / 2) * width, vals, width, label=d)
     ax.set_xticks(x)
-    ax.set_xticklabels(xlabels, rotation=45, ha="right")
+    ax.set_xticklabels(xlabels)
     ax.set_ylabel("Raw DefenseScore")
     ax.axhline(0, color="k", lw=0.5)
     ax.set_title("WolfBench Defense Leaderboard — DefenseScore by scenario")
@@ -226,13 +326,11 @@ def main():
 
     # ---- Plot Threshold shift ----
     fig, ax = plt.subplots(figsize=(9, 5))
-    for i, d in enumerate(DEFENSES):
-        vals = [(next(r["threshold_shift"] for r in leaderboard
-                      if r["scenario"] == s and r["n_society"] == n and r["defense"] == d) or 0.0)
-                for s in SCENARIOS for n in N_GRID]
-        ax.bar(x + (i - (len(DEFENSES) - 1) / 2) * width, vals, width, label=d)
+    for i, d in enumerate(ordered_defenses):
+        vals = _scenario_metric_means(scenario_leaderboard, d, "threshold_shift", none_as_zero=True)
+        ax.bar(x + (i - (len(ordered_defenses) - 1) / 2) * width, vals, width, label=d)
     ax.set_xticks(x)
-    ax.set_xticklabels(xlabels, rotation=45, ha="right")
+    ax.set_xticklabels(xlabels)
     ax.set_ylabel("ThresholdShift  Δα_c")
     ax.axhline(0, color="k", lw=0.5)
     ax.set_title("WolfBench — Critical-α shift relative to NoGuard")
@@ -242,27 +340,23 @@ def main():
     plt.close(fig)
 
     # ---- Overall leaderboard ----
-    ordered = sorted(overall, key=lambda x: x["official_score_mean"], reverse=True)
     fig, ax = plt.subplots(figsize=(8, 4.5))
-    names = [r["defense"] for r in ordered]
-    vals = [r["official_score_mean"] for r in ordered]
-    yerr = [
-        [r["official_score_mean"] - r["official_score_ci_low"] for r in ordered],
-        [r["official_score_ci_high"] - r["official_score_mean"] for r in ordered],
-    ]
-    ax.bar(names, vals, yerr=yerr, capsize=4)
+    names = [r["Defense model"] for r in display_leaderboard]
+    vals = [r["Avg DefenseScore"] for r in display_leaderboard]
+    ax.bar(names, vals)
     ax.axhline(0, color="k", lw=0.5)
-    ax.set_ylabel("Mean OfficialScore across S1-S4")
-    ax.set_title("WolfBench Exp6 — Overall baseline leaderboard")
+    ax.set_ylabel("Avg DefenseScore across S1-S4")
+    ax.set_title("WolfBench Exp6 — Overall defense leaderboard")
     fig.tight_layout()
     fig.savefig(out / "leaderboard_overall.png", dpi=150)
     plt.close(fig)
 
     print("\nLeaderboard written to", out)
-    for r in leaderboard:
-          print(f"  {r['scenario']:>3} {r['defense']:<8}  "
-              f"N={r['n_society']:<5} score={r['defense_score']:>7.2f}  "
-              f"Δα_c={r['threshold_shift']}")
+    for r in display_leaderboard:
+        print(
+            f"  {r['Defense model']:<12} avg={r['Avg DefenseScore']:>7.2f}  "
+            f"worst={r['Worst Score']:>7.2f}  Δα_c_avg={r['Avg ThresholdShift']}"
+        )
 
 
 if __name__ == "__main__":

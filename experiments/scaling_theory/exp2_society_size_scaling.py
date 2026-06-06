@@ -1,6 +1,8 @@
-"""Experiment 2: alpha_c(N) -- how the critical harmful-agent ratio scales
-with society size N. Theory (paper §9.4) predicts alpha_c ~ Theta / N (or a
-sub-linear power law), giving a straight line on a log-log plot.
+"""Experiment 2: alpha_c(N) with near-threshold alpha grid.
+
+This is the main controlled scaling-protocol experiment. It estimates the
+critical harmful-agent ratio with a logistic fit and bootstrap confidence
+intervals, rather than only using a grid-crossing interpolation.
 
 Output: outputs/scaling_theory/exp2_society_size_scaling/
 """
@@ -15,37 +17,30 @@ import numpy as np
 from experiments._common import (
     RunSpec, aggregate, run_grid, scaling_exp_dir, write_csv, write_json,
 )
+from experiments.scaling_theory._threshold import bootstrap_logistic_ci, fit_logistic_threshold, linear_alpha_c
 
 
 SCENARIO = "s1"
 N_GRID = [100, 200, 500, 1000, 2000, 5000]
-ALPHAS = [0.001, 0.002, 0.005, 0.01, 0.02, 0.03, 0.05, 0.08, 0.12, 0.20]
-SEEDS = [1, 2, 3, 4, 5]
+ALPHAS = [
+    0.0, 0.0025, 0.005, 0.0075, 0.01, 0.0125, 0.015, 0.0175,
+    0.02, 0.0225, 0.025, 0.03, 0.04,
+]
+SEEDS = list(range(1, 21))
+CI_BOOT = 500
 
 
 def estimate_alpha_c(rows, N, alphas, threshold: float = 0.5):
-    """Linear interpolate alpha at which P(collapse)=threshold."""
+    """Return logistic and linear alpha_c estimates plus P(collapse) curve."""
     ps = []
     for a in alphas:
         agg = aggregate([r for r in rows if r["n_society"] == N and r["alpha"] == a],
                         ["alpha"], "collapse_rate")
         ps.append(agg.get((a,), {"mean": 0.0})["mean"])
     ps = np.array(ps)
-    alphas = np.array(alphas)
-    # find first index where p >= threshold
-    idx = np.where(ps >= threshold)[0]
-    if len(idx) == 0:
-        return None, ps
-    i = int(idx[0])
-    if i == 0:
-        return float(alphas[0]), ps
-    # linear interpolate between i-1 and i
-    p0, p1 = ps[i - 1], ps[i]
-    a0, a1 = alphas[i - 1], alphas[i]
-    if p1 == p0:
-        return float(a1), ps
-    ac = a0 + (threshold - p0) * (a1 - a0) / (p1 - p0)
-    return float(ac), ps
+    fit = fit_logistic_threshold(alphas, ps, threshold=threshold)
+    fit["alpha_c_linear"] = linear_alpha_c(alphas, ps, threshold=threshold)
+    return fit, ps
 
 
 def main():
@@ -54,22 +49,58 @@ def main():
     print(f"Running {len(specs)} episodes for exp2...")
     rows = run_grid(specs)
     write_csv(rows, out / "data.csv")
-    write_json({"scenario": SCENARIO, "alphas": ALPHAS, "n_grid": N_GRID, "seeds": SEEDS},
+    write_json({
+        "scenario": SCENARIO,
+        "alphas": ALPHAS,
+        "n_grid": N_GRID,
+        "seeds": SEEDS,
+        "alpha_c_estimator": "logistic_fit_with_bootstrap_ci",
+        "ci_boot": CI_BOOT,
+    },
                out / "config.json")
 
     # ---------- estimate alpha_c per N ----------
     alpha_cs = []
+    alpha_cs_linear = []
     p_curves = {}
+    fitted_curves = {}
+    threshold_rows = []
     for N in N_GRID:
-        ac, ps = estimate_alpha_c(rows, N, ALPHAS)
+        fit, ps = estimate_alpha_c(rows, N, ALPHAS)
+        rows_n = [r for r in rows if r["n_society"] == N]
+        ci = bootstrap_logistic_ci(rows_n, ALPHAS, n_boot=CI_BOOT, rng_seed=10_000 + N)
+        ac = fit["alpha_c"]
         alpha_cs.append(ac)
+        alpha_cs_linear.append(fit["alpha_c_linear"])
         p_curves[N] = ps
+        fitted_curves[N] = fit["fitted_probs"]
+        threshold_rows.append({
+            "n_society": N,
+            "alpha_c_logistic": ac,
+            "alpha_c_ci_low": ci["ci_low"],
+            "alpha_c_ci_high": ci["ci_high"],
+            "alpha_c_linear": fit["alpha_c_linear"],
+            "logistic_slope": fit["slope"],
+            "transition_width_10_90": fit["transition_width_10_90"],
+            "fit_method": fit["method"],
+            "bootstrap_successes": ci["n_success"],
+        })
+    write_csv(threshold_rows, out / "alpha_critical_summary.csv")
 
     # ---------- Figure 1: log-log alpha_c vs N + power-law fit ----------
     fig, ax = plt.subplots(figsize=(7, 5))
     Ns = np.array([N for N, ac in zip(N_GRID, alpha_cs) if ac is not None])
     acs = np.array([ac for ac in alpha_cs if ac is not None])
-    ax.loglog(Ns, acs, "o", markersize=8, color="C3", label="estimated α_c(N)")
+    yerr_low, yerr_high = [], []
+    for row in threshold_rows:
+        if row["alpha_c_logistic"] is None:
+            continue
+        low = row["alpha_c_ci_low"] if row["alpha_c_ci_low"] is not None else row["alpha_c_logistic"]
+        high = row["alpha_c_ci_high"] if row["alpha_c_ci_high"] is not None else row["alpha_c_logistic"]
+        yerr_low.append(max(0.0, row["alpha_c_logistic"] - low))
+        yerr_high.append(max(0.0, high - row["alpha_c_logistic"]))
+    ax.errorbar(Ns, acs, yerr=[yerr_low, yerr_high], fmt="o", markersize=8,
+                color="C3", capsize=4, label="logistic α_c(N) with bootstrap CI")
     fit_info = {}
     if len(Ns) >= 2:
         # log alpha_c = log A + beta * log N
@@ -78,7 +109,7 @@ def main():
         fit_x = np.logspace(np.log10(Ns.min()), np.log10(Ns.max()), 50)
         fit_y = A * fit_x ** beta
         ax.loglog(fit_x, fit_y, "--", color="C0",
-                  label=f"fit  α_c ≈ {A:.3g}·N^{{{beta:.2f}}}")
+                  label=f"power fit  α_c ≈ {A:.3g}·N^{{{beta:.2f}}}")
         fit_info = {"A": A, "beta": float(beta)}
     ax.set_xlabel("Society size N (log)")
     ax.set_ylabel("Critical harmful ratio α_c (log)")
@@ -109,8 +140,25 @@ def main():
     fig.savefig(out / "p_collapse_heatmap.png", dpi=140)
     plt.close(fig)
 
+    # ---------- Figure 3: transition width vs N ----------
+    fig, ax = plt.subplots(figsize=(7, 5))
+    widths = [r["transition_width_10_90"] for r in threshold_rows]
+    ax.plot(N_GRID, widths, "-o", color="C4")
+    ax.set_xscale("log")
+    ax.set_xlabel("Society size N (log)")
+    ax.set_ylabel("Logistic transition width α(0.9)-α(0.1)")
+    ax.set_title("WolfBench S1: finite-size transition width")
+    ax.grid(which="both", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(out / "transition_width_vs_N.png", dpi=140)
+    plt.close(fig)
+
     write_json({
-        "alpha_critical": {str(N): ac for N, ac in zip(N_GRID, alpha_cs)},
+        "alpha_critical_logistic": {str(N): ac for N, ac in zip(N_GRID, alpha_cs)},
+        "alpha_critical_linear": {str(N): ac for N, ac in zip(N_GRID, alpha_cs_linear)},
+        "threshold_summary": threshold_rows,
+        "p_collapse": {str(N): dict(zip(map(str, ALPHAS), p_curves[N].tolist())) for N in N_GRID},
+        "p_collapse_logistic_fit": {str(N): dict(zip(map(str, ALPHAS), fitted_curves[N])) for N in N_GRID},
         "fit": fit_info,
     }, out / "summary.json")
     print(f"Done. Wrote {out}")

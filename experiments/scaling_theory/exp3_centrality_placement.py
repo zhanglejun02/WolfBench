@@ -23,7 +23,7 @@ SCENARIO = "s2"
 ALPHA = 0.003
 N_GRID = [500, 2000]
 PLACEMENTS = ["random", "high_degree"]
-SEEDS = [1, 2, 3, 4, 5, 6, 7, 8]
+SEEDS = list(range(1, 21))
 
 
 def main():

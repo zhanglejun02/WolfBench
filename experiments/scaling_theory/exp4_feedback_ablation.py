@@ -1,7 +1,9 @@
-"""Experiment 4: market-feedback ablation (paper §10 Social Experiment 3).
+"""Experiment 4: near-threshold market-feedback ablation.
 
-Hold harmful ratio fixed; sweep ``social.feedback_strength`` to measure how
-strongly the social-financial reflexive loop amplifies collapse.
+Hold harmful ratio near the S1 critical region; sweep
+``social.feedback_strength`` to test whether the social-financial reflexive
+loop changes collapse probability rather than only increasing already-saturated
+loss severity.
 
 Output: outputs/scaling_theory/exp4_feedback_ablation/
 """
@@ -18,11 +20,11 @@ from experiments._common import (
 )
 
 
-SCENARIO = "s2"
-N_SOCIETY = 2000
-ALPHA = 0.003
-FEEDBACKS = [0.0, 0.2, 0.4, 0.8, 1.2, 1.8, 2.5]
-SEEDS = [1, 2, 3, 4, 5, 6, 7, 8]
+SCENARIO = "s1"
+N_SOCIETY = 1000
+ALPHA = 0.015
+FEEDBACKS = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.4, 2.0]
+SEEDS = list(range(1, 21))
 
 
 def main():
@@ -63,7 +65,7 @@ def main():
         ax.set_title(title)
         ax.grid(alpha=0.3)
     fig.suptitle(
-        f"WolfBench S2: social-market feedback ablation (α={ALPHA}, N={N_SOCIETY})",
+        f"WolfBench S1: near-threshold feedback ablation (α={ALPHA}, N={N_SOCIETY})",
         y=1.02,
     )
     fig.tight_layout()

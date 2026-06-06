@@ -272,19 +272,34 @@ harmful-agent scaling claim solid before comparing defenses.
 
 | # | Script | Question it answers |
 |---|--------|---------------------|
-| 1 | `scaling_theory.exp1_alpha_scaling` | Is collapse a nonlinear phase transition in α? Sweeps α at N ∈ {200, 1k, 5k} on S1, locates α_c(N). |
-| 2 | `scaling_theory.exp2_society_size_scaling` | How does α_c scale with N? Fits α_c(N) ≈ A·N^β and renders a P_collapse heat-map. |
+| 1 | `scaling_theory.exp1_alpha_scaling` | Is collapse a nonlinear phase transition in α? Sweeps α at N ∈ {200, 1k, 5k} on S1 with 20 seeds. |
+| 2 | `scaling_theory.exp2_society_size_scaling` | How does α_c scale with N? Uses a fine near-threshold α grid, logistic α_c fit, bootstrap CI, transition width, and a P_collapse heat-map. |
 | 3 | `scaling_theory.exp3_centrality_placement` | Does *where* harmful agents sit on the social graph matter? Compares `random` vs `high_degree` placement. |
-| 4 | `scaling_theory.exp4_feedback_ablation` | How much does the social-market reflexive loop amplify harm? Sweeps `social.feedback_strength`. |
+| 4 | `scaling_theory.exp4_feedback_ablation` | Does social-market feedback change collapse near threshold? Sweeps `social.feedback_strength` at S1/N=1000/α=0.015. |
+| 5 | `scaling_theory.exp5_capacity_control` | Does α_c(N) survive capacity control? Compares default per-agent capacity with fixed total wealth/liquidity. |
+| 6 | `scaling_theory.exp6_llm_n200_scaling` | Minimal LLM check: N=200, one LLM harmful strategist, full α sweep. Run explicitly because it calls a model. |
 
 ```bash
 python -m experiments.scaling_theory.exp1_alpha_scaling
 python -m experiments.scaling_theory.exp2_society_size_scaling
 python -m experiments.scaling_theory.exp3_centrality_placement
 python -m experiments.scaling_theory.exp4_feedback_ablation
+python -m experiments.scaling_theory.exp5_capacity_control
+python -m experiments.scaling_theory.exp6_llm_n200_scaling
 
 # run only the scaling-theory suite
 python -m experiments.scaling_theory.run_all
+
+# recommended long-run form in tmux
+tmux new-session -d -s wolfbench_scaling \
+  'cd /root/WolfBench && PYTHONUNBUFFERED=1 python -m experiments.scaling_theory.run_all 2>&1 | tee outputs/scaling_theory/run_all_tmux.log'
+
+# run the explicit LLM strategic-leader check; requires local vLLM/Qwen
+export WOLFBENCH_VLLM_MODEL=qwen3-8b
+export WOLFBENCH_VLLM_BASE_URL=http://127.0.0.1:8000/v1
+mkdir -p outputs/scaling_theory/exp6_llm_n200_scaling
+tmux new-session -d -s wolfbench_llm_n200 \
+  'cd /root/WolfBench && PYTHONUNBUFFERED=1 python -m experiments.scaling_theory.exp6_llm_n200_scaling 2>&1 | tee outputs/scaling_theory/exp6_llm_n200_scaling/tmux.log'
 
 # run every shipped experiment across both tracks
 python -m experiments.run_all
@@ -299,7 +314,7 @@ defense policies after the scaling protocol is fixed.
 |---|--------|---------------------|
 | 5 | `defense_benchmark.exp5_wolfguard_defense` | Can the rule baseline push α_c rightwards? P(collapse) curves with vs without defense. |
 | 6 | `defense_benchmark.calibrate_alpha_grid` | Calibrates S1-S4 α grids around visible critical regions before running defense evaluation. |
-| 7 | `defense_benchmark.exp6_defense_leaderboard` | **Defense leaderboard.** Runs full grids across calibrated per-scenario α, multiple N and seeds, and reports track-aware `OfficialScore`, raw `DefenseScore`, `ThresholdShift`, and 95% CI. |
+| 7 | `defense_benchmark.exp6_defense_leaderboard` | **Defense leaderboard.** Runs full grids across calibrated per-scenario α, multiple N and seeds, and writes the public leaderboard as `Defense model`, `S1`-`S4`, `Avg DefenseScore`, `Avg ThresholdShift`, and `Worst Score`. |
 | 8 | `defense_benchmark.analyze_qwen_baseline` | Post-run analysis for the local Qwen/vLLM leaderboard row. |
 
 ```bash
@@ -330,6 +345,12 @@ Defense tracks used by Exp6:
 | `llm_assisted_rule` | `llm_assisted`, `qwen_assisted` |
 | `control` | `noguard`, `random` |
 
+Exp6 keeps detailed per-scenario/N aggregates in `leaderboard_by_scenario.csv`
+and `summary.json`. The display leaderboard in `leaderboard.csv`,
+`leaderboard_overall.csv`, and `leaderboard.md` is sorted by
+`Avg DefenseScore`; `Avg ThresholdShift` treats missing scenario
+`threshold_shift` values as `0.0`.
+
 For a stronger local/open model comparison after Qwen3-8B, prefer
 `Qwen/Qwen3-14B` if VRAM permits. If memory is tight, use a quantized 14B/32B
 instruct model supported by vLLM. Compare models on the same calibrated α/N/seed
@@ -350,9 +371,8 @@ intervals preserve the same ordering.
    wolfbench evaluate --defense pkg.mod:MyDefense --split public_test \
                       --scenario s1 --out my_s1.json
    ```
-4. Report mean ± std DefenseScore across `S1–S4`, plus `ThresholdShift` per
-  scenario, plus a row from `defense_benchmark.exp6_defense_leaderboard` with your policy
-   added to the registry.
+4. Report the `defense_benchmark.exp6_defense_leaderboard` row for your policy:
+  `S1`-`S4`, `Avg DefenseScore`, `Avg ThresholdShift`, and `Worst Score`.
 
 ---
 

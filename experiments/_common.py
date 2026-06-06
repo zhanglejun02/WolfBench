@@ -56,6 +56,12 @@ class RunSpec:
     seed: int
     placement: str | None = None
     feedback_strength: float | None = None   # mutate scenario.social
+    retail_wealth_scale: float | None = None
+    asset_liquidity_scale: float | None = None
+    llm_backend: Any = None
+    n_llm_leaders: int = 0
+    llm_provider: str = ""
+    llm_model: str = ""
     defense: bool = False
     defense_mode: str = "full"
     defense_policy: Any = None                # WolfGuardPolicy override
@@ -66,6 +72,11 @@ def run_episode(spec: RunSpec, baseline=None) -> dict[str, Any]:
     scen = load_scenario(spec.scenario)
     if spec.feedback_strength is not None:
         scen.social["feedback_strength"] = float(spec.feedback_strength)
+    if spec.retail_wealth_scale is not None:
+        scen.retail["initial_wealth"] = float(scen.retail["initial_wealth"]) * float(spec.retail_wealth_scale)
+    if spec.asset_liquidity_scale is not None:
+        for asset in scen.assets:
+            asset.initial_liquidity *= float(spec.asset_liquidity_scale)
 
     wg = None
     if spec.defense_policy is not None:
@@ -79,6 +90,8 @@ def run_episode(spec: RunSpec, baseline=None) -> dict[str, Any]:
         scen, n_society=spec.n_society, alpha=spec.alpha, seed=spec.seed,
         wolfguard=wg, baseline=baseline,
         placement_override=spec.placement,
+        llm_backend=spec.llm_backend,
+        n_llm_leaders=spec.n_llm_leaders,
         expose_oracle=(spec.label == "oracle" or wg.__class__.__name__ == "OracleWolfGuardPolicy" if wg is not None else False),
     )
     res = env.run()
@@ -88,10 +101,21 @@ def run_episode(spec: RunSpec, baseline=None) -> dict[str, Any]:
         "n_society": spec.n_society,
         "alpha": spec.alpha,
         "seed": spec.seed,
+        "n_harmful": int(round(spec.alpha * spec.n_society)),
         "placement": spec.placement or "",
         "feedback_strength": (
             float(spec.feedback_strength) if spec.feedback_strength is not None else float("nan")
         ),
+        "retail_wealth_scale": (
+            float(spec.retail_wealth_scale) if spec.retail_wealth_scale is not None else float("nan")
+        ),
+        "asset_liquidity_scale": (
+            float(spec.asset_liquidity_scale) if spec.asset_liquidity_scale is not None else float("nan")
+        ),
+        "n_llm_leaders": int(spec.n_llm_leaders),
+        "llm_provider": spec.llm_provider,
+        "llm_model": spec.llm_model,
+        "llm_backend": getattr(spec.llm_backend, "name", "") if spec.llm_backend is not None else "",
         "defense": int(spec.defense),
         "defense_mode": spec.defense_mode if spec.defense else "",
         "label": spec.label,

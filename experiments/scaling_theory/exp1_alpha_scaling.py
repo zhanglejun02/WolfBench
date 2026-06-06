@@ -18,9 +18,9 @@ from experiments._common import (
 
 
 SCENARIO = "s1"
-ALPHAS = [0.0, 0.001, 0.005, 0.01, 0.02, 0.05, 0.10, 0.20]
+ALPHAS = [0.0, 0.001, 0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, 0.05, 0.10, 0.20]
 N_GRID = [200, 1000, 5000]
-SEEDS = [1, 2, 3, 4, 5]
+SEEDS = list(range(1, 21))
 
 
 def main():
