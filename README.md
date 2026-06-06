@@ -262,22 +262,43 @@ experiments/
 
 ## Experiments
 
-`experiments/` is split into two folders so theory evidence and benchmark
-leaderboards do not share output directories.
+`experiments/` is split into two folders so scaling-theory evidence and defense
+benchmark results do not share output directories. The scripts intentionally
+write to stable output folders and overwrite the main CSV/JSON/PNG files on
+each rerun. Every experiment folder also gets timestamp markers:
+
+- `run_metadata.json` — latest run status and UTC timestamp.
+- `last_run.txt` — quick human-readable latest timestamp.
+- `run_history.jsonl` — appended start/summary events across reruns.
+
+Run commands from the repository root:
+
+```bash
+cd /root/WolfBench
+```
+
+For long runs, prefer `tmux` and tee logs into the same output tree:
+
+```bash
+tmux new-session -d -s wolfbench_run \
+  'cd /root/WolfBench && PYTHONUNBUFFERED=1 python -m experiments.scaling_theory.run_all 2>&1 | tee outputs/scaling_theory/run_all_tmux.log'
+```
 
 ### Scaling Theory Track
 
 These scripts write to `outputs/scaling_theory/` and are intended to make the
 harmful-agent scaling claim solid before comparing defenses.
 
-| # | Script | Question it answers |
-|---|--------|---------------------|
-| 1 | `scaling_theory.exp1_alpha_scaling` | Is collapse a nonlinear phase transition in α? Sweeps α at N ∈ {200, 1k, 5k} on S1 with 20 seeds. |
-| 2 | `scaling_theory.exp2_society_size_scaling` | How does α_c scale with N? Uses a fine near-threshold α grid, logistic α_c fit, bootstrap CI, transition width, and a P_collapse heat-map. |
-| 3 | `scaling_theory.exp3_centrality_placement` | Does *where* harmful agents sit on the social graph matter? Compares `random` vs `high_degree` placement. |
-| 4 | `scaling_theory.exp4_feedback_ablation` | Does social-market feedback change collapse near threshold? Sweeps `social.feedback_strength` at S1/N=1000/α=0.015. |
-| 5 | `scaling_theory.exp5_capacity_control` | Does α_c(N) survive capacity control? Compares default per-agent capacity with fixed total wealth/liquidity. |
-| 6 | `scaling_theory.exp6_llm_n200_scaling` | Minimal LLM check: N=200, one LLM harmful strategist, full α sweep. Run explicitly because it calls a model. |
+| # | Module | Output folder | Default run | Main outputs |
+|---|--------|---------------|-------------|--------------|
+| 1 | `experiments.scaling_theory.exp1_alpha_scaling` | `outputs/scaling_theory/exp1_alpha_scaling/` | S1, N=`200,1000,5000`, α=`0..0.20`, seeds `1..20` | `data.csv`, `config.json`, `summary.json`, `p_collapse_vs_alpha.png`, `metrics_vs_alpha.png` |
+| 2 | `experiments.scaling_theory.exp2_society_size_scaling` | `outputs/scaling_theory/exp2_society_size_scaling/` | S1, N=`100..5000`, fine near-threshold α grid, seeds `1..20` | `data.csv`, `alpha_critical_summary.csv`, `summary.json`, `alpha_critical_vs_N.png`, `p_collapse_heatmap.png`, `transition_width_vs_N.png` |
+| 3 | `experiments.scaling_theory.exp3_centrality_placement` | `outputs/scaling_theory/exp3_centrality_placement/` | S2, α=`0.003`, N=`500,2000`, placements `random,high_degree`, seeds `1..20` | `data.csv`, `config.json`, `summary.json`, `centrality_compare.png` |
+| 4 | `experiments.scaling_theory.exp4_feedback_ablation` | `outputs/scaling_theory/exp4_feedback_ablation/` | S1, N=`1000`, α=`0.015`, feedback strengths `0..2.0`, seeds `1..20` | `data.csv`, `config.json`, `summary.json`, `feedback_compare.png` |
+| 5 | `experiments.scaling_theory.exp5_capacity_control` | `outputs/scaling_theory/exp5_capacity_control/` | S1, N=`200,1000,5000`, near-threshold α grid, per-agent vs fixed-total capacity, seeds `1..20` | `data.csv`, `alpha_critical_capacity_summary.csv`, `summary.json`, `alpha_critical_capacity_compare.png`, `p_collapse_capacity_compare.png` |
+| 6 | `experiments.scaling_theory.exp6_llm_n200_scaling` | `outputs/scaling_theory/exp6_llm_n200_scaling/` | S1, N=`200`, one LLM harmful leader, α sweep, seeds `1..20` | `data.csv`, `alpha_critical_summary.csv`, `summary.json`, `p_collapse_vs_alpha.png`, `metrics_vs_alpha.png` |
+
+Run one scaling experiment:
 
 ```bash
 python -m experiments.scaling_theory.exp1_alpha_scaling
@@ -285,23 +306,35 @@ python -m experiments.scaling_theory.exp2_society_size_scaling
 python -m experiments.scaling_theory.exp3_centrality_placement
 python -m experiments.scaling_theory.exp4_feedback_ablation
 python -m experiments.scaling_theory.exp5_capacity_control
-python -m experiments.scaling_theory.exp6_llm_n200_scaling
+```
 
-# run only the scaling-theory suite
+Run the non-LLM scaling suite:
+
+```bash
 python -m experiments.scaling_theory.run_all
+```
 
-# recommended long-run form in tmux
-tmux new-session -d -s wolfbench_scaling \
-  'cd /root/WolfBench && PYTHONUNBUFFERED=1 python -m experiments.scaling_theory.run_all 2>&1 | tee outputs/scaling_theory/run_all_tmux.log'
+Run the LLM scaling check explicitly. It is excluded from `run_all` because it
+calls a model server:
 
-# run the explicit LLM strategic-leader check; requires local vLLM/Qwen
+```bash
 export WOLFBENCH_VLLM_MODEL=qwen3-8b
 export WOLFBENCH_VLLM_BASE_URL=http://127.0.0.1:8000/v1
-mkdir -p outputs/scaling_theory/exp6_llm_n200_scaling
-tmux new-session -d -s wolfbench_llm_n200 \
-  'cd /root/WolfBench && PYTHONUNBUFFERED=1 python -m experiments.scaling_theory.exp6_llm_n200_scaling 2>&1 | tee outputs/scaling_theory/exp6_llm_n200_scaling/tmux.log'
+python -m experiments.scaling_theory.exp6_llm_n200_scaling
+```
 
-# run every shipped experiment across both tracks
+Useful overrides for the LLM scaling check:
+
+```bash
+WOLFBENCH_LLM_N200_ALPHAS=0,0.01,0.02 \
+WOLFBENCH_LLM_N200_SEEDS=1,2 \
+WOLFBENCH_LLM_N200_MODEL=qwen3-8b \
+python -m experiments.scaling_theory.exp6_llm_n200_scaling
+```
+
+Run all shipped non-LLM experiments across both tracks:
+
+```bash
 python -m experiments.run_all
 ```
 
@@ -310,20 +343,35 @@ python -m experiments.run_all
 These scripts write to `outputs/defense_benchmark/` and are for evaluating
 defense policies after the scaling protocol is fixed.
 
-| # | Script | Question it answers |
-|---|--------|---------------------|
-| 5 | `defense_benchmark.exp5_wolfguard_defense` | Can the rule baseline push α_c rightwards? P(collapse) curves with vs without defense. |
-| 6 | `defense_benchmark.calibrate_alpha_grid` | Calibrates S1-S4 α grids around visible critical regions before running defense evaluation. |
-| 7 | `defense_benchmark.exp6_defense_leaderboard` | **Defense leaderboard.** Runs full grids across calibrated per-scenario α, multiple N and seeds, and writes the public leaderboard as `Defense model`, `S1`-`S4`, `Avg DefenseScore`, `Avg ThresholdShift`, and `Worst Score`. |
-| 8 | `defense_benchmark.analyze_qwen_baseline` | Post-run analysis for the local Qwen/vLLM leaderboard row. |
+| # | Module | Output folder | Default run | Main outputs |
+|---|--------|---------------|-------------|--------------|
+| 5 | `experiments.defense_benchmark.exp5_wolfguard_defense` | `outputs/defense_benchmark/exp5_wolfguard_defense/` | S1, N=`1000`, α=`0..0.20`, seeds `1..5`, NoGuard vs built-in WolfGuard | `data.csv`, `config.json`, `summary.json`, `defense_shift.png` |
+| 6 | `experiments.defense_benchmark.calibrate_alpha_grid` | `outputs/defense_benchmark/alpha_calibration/` | S1-S4, N=`500,1000,2000`, broad α grid, seeds `1..5` | `data.csv`, `summary.csv`, `recommended_alpha_grid.csv`, `recommended_env.sh`, `summary.json`, `p_collapse_calibration.png` |
+| 7 | `experiments.defense_benchmark.exp6_defense_leaderboard` | `outputs/defense_benchmark/exp6/` by default | S1-S4, N=`500,1000,2000`, calibrated α grids, seeds `1..5`, defenses `noguard,random,rule` plus `oracle` | `data.csv`, `leaderboard.csv`, `leaderboard_by_scenario.csv`, `leaderboard_overall.csv`, `leaderboard.md`, `summary.json`, `leaderboard.png`, `threshold_shift.png`, `leaderboard_overall.png` |
+| 8 | `experiments.defense_benchmark.analyze_qwen_baseline` | same `WOLFBENCH_EXP6_OUT` folder | Reads an exp6 output containing `qwen` | `qwen_analysis.json`, `qwen_analysis.md` |
+
+Run one defense experiment:
 
 ```bash
 python -m experiments.defense_benchmark.exp5_wolfguard_defense
 python -m experiments.defense_benchmark.calibrate_alpha_grid
 python -m experiments.defense_benchmark.exp6_defense_leaderboard
+```
 
-# run only the defense-benchmark suite
+Run only the defense-benchmark suite:
+
+```bash
 python -m experiments.defense_benchmark.run_all
+```
+
+Calibrate α grids with a smaller manual check:
+
+```bash
+WOLFBENCH_CALIB_SCENARIOS=s1,s2 \
+WOLFBENCH_CALIB_N_GRID=500 \
+WOLFBENCH_CALIB_ALPHAS=0,0.005,0.01,0.02,0.05 \
+WOLFBENCH_CALIB_SEEDS=1,2 \
+python -m experiments.defense_benchmark.calibrate_alpha_grid
 ```
 
 Current calibrated full-grid defaults are:
@@ -334,6 +382,53 @@ Current calibrated full-grid defaults are:
 | S2 | `0,0.00025,0.0005,0.00075,0.001,0.0015,0.0025` |
 | S3 | `0,0.15,0.3,0.4,0.5` |
 | S4 | `0,0.01,0.015,0.02,0.03,0.05,0.1,0.15,0.2` |
+
+Run the default defense leaderboard:
+
+```bash
+python -m experiments.defense_benchmark.exp6_defense_leaderboard
+```
+
+Run a quick smoke leaderboard that overwrites `outputs/defense_benchmark/exp6_smoke/`:
+
+```bash
+WOLFBENCH_EXP6_OUT=exp6_smoke \
+WOLFBENCH_EXP6_DEFENSES=noguard,rule \
+WOLFBENCH_EXP6_UPPER_BOUNDS= \
+WOLFBENCH_EXP6_N_GRID=100 \
+WOLFBENCH_EXP6_SEEDS=1 \
+WOLFBENCH_EXP6_ALPHAS=0 \
+python -m experiments.defense_benchmark.exp6_defense_leaderboard
+```
+
+Run a local Qwen/vLLM defense leaderboard row:
+
+```bash
+export WOLFBENCH_VLLM_MODEL=qwen3-8b
+export WOLFBENCH_VLLM_BASE_URL=http://127.0.0.1:8000/v1
+
+WOLFBENCH_EXP6_OUT=exp6_qwen \
+WOLFBENCH_EXP6_DEFENSES=noguard,qwen \
+WOLFBENCH_EXP6_UPPER_BOUNDS= \
+WOLFBENCH_EXP6_N_GRID=1000 \
+python -m experiments.defense_benchmark.exp6_defense_leaderboard
+
+WOLFBENCH_EXP6_OUT=exp6_qwen \
+python -m experiments.defense_benchmark.analyze_qwen_baseline
+```
+
+Useful Exp6 overrides:
+
+```bash
+WOLFBENCH_EXP6_DEFENSES=noguard,random,rule,qwen
+WOLFBENCH_EXP6_UPPER_BOUNDS=oracle
+WOLFBENCH_EXP6_SCENARIOS=s1,s2,s3,s4
+WOLFBENCH_EXP6_N_GRID=500,1000,2000
+WOLFBENCH_EXP6_SEEDS=1,2,3,4,5
+WOLFBENCH_EXP6_ALPHAS=0,0.01,0.02
+WOLFBENCH_EXP6_ALPHAS_S2=0,0.0005,0.001,0.0025
+WOLFBENCH_EXP6_OUT=exp6
+```
 
 Defense tracks used by Exp6:
 

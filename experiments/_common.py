@@ -16,6 +16,7 @@ import json
 import os
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -33,10 +34,49 @@ SCALING_THEORY_OUTPUTS_ROOT = OUTPUTS_ROOT / "scaling_theory"
 DEFENSE_BENCHMARK_OUTPUTS_ROOT = OUTPUTS_ROOT / "defense_benchmark"
 
 
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def _rel_path(path: Path) -> str:
+    try:
+        return str(path.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(path)
+
+
+def _record_run_event(directory: Path, event: str) -> None:
+    now = _utc_now()
+    metadata_path = directory / "run_metadata.json"
+    metadata: dict[str, Any] = {}
+    if metadata_path.exists():
+        try:
+            metadata = json.loads(metadata_path.read_text())
+        except json.JSONDecodeError:
+            metadata = {}
+    metadata["output_dir"] = _rel_path(directory)
+    metadata["last_event"] = event
+    metadata["last_event_at_utc"] = now
+    if event == "started":
+        metadata["started_at_utc"] = now
+        metadata["status"] = "running"
+    elif event == "summary_written":
+        metadata["summary_written_at_utc"] = now
+        metadata["status"] = "summary_written"
+    metadata_path.write_text(json.dumps(metadata, indent=2) + "\n")
+    (directory / "last_run.txt").write_text(
+        f"{metadata.get('status', event)} at {now}\n"
+        f"output_dir={metadata['output_dir']}\n"
+    )
+    with open(directory / "run_history.jsonl", "a") as handle:
+        handle.write(json.dumps({"event": event, "at_utc": now, "output_dir": metadata["output_dir"]}) + "\n")
+
+
 def exp_dir(name: str, track: str | None = None) -> Path:
     root = OUTPUTS_ROOT if track is None else OUTPUTS_ROOT / track
     d = root / name
     d.mkdir(parents=True, exist_ok=True)
+    _record_run_event(d, "started")
     return d
 
 
@@ -161,6 +201,8 @@ def write_csv(rows: list[dict[str, Any]], path: Path) -> None:
 def write_json(obj: Any, path: Path) -> None:
     with open(path, "w") as f:
         json.dump(obj, f, indent=2, default=str)
+    if path.name == "summary.json":
+        _record_run_event(path.parent, "summary_written")
 
 
 def aggregate(rows: list[dict[str, Any]], group_by: list[str], metric: str
