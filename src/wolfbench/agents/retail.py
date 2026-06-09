@@ -152,6 +152,7 @@ def build_retail_agents(n: int, scenario, rng) -> list[RetailAgent]:
             beta_warning=float(scenario.retail.get("beta_warning", 1.2)),
             beta_volume=float(scenario.retail.get("beta_volume", 0.4)),
             beta_imbalance=float(scenario.retail.get("beta_imbalance", 0.0)),
+            risk_appetite=float(scenario.retail.get("risk_appetite", 0.02)),
             skepticism=0.6 if role == "skeptical" else 0.0,
             rng=np.random.default_rng(int(rng.integers(0, 2**31 - 1))),
         )

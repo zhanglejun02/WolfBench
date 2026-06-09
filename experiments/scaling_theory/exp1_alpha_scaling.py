@@ -1,6 +1,6 @@
 """Experiment 1: P_collapse(alpha) at fixed N -- expect S-shaped curves with
-shifting critical threshold alpha_c(N). Demonstrates the nonlinear
-phase-transition claim.
+shifting critical threshold alpha_c(N). Demonstrates finite-size critical-regime
+behavior.
 
 Output: outputs/scaling_theory/exp1_alpha_scaling/
 """
@@ -13,14 +13,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments._common import (
-    RunSpec, aggregate, alpha_critical, run_grid, scaling_exp_dir, write_csv, write_json,
+    RunSpec, aggregate, alpha_critical, env_float_list, env_int_list,
+    env_seed_list, run_grid, scaling_exp_dir, write_csv, write_json,
 )
+from wolfbench.metrics import binomial_rate_summary
 
 
 SCENARIO = "s1"
-ALPHAS = [0.0, 0.001, 0.005, 0.0075, 0.01, 0.015, 0.02, 0.03, 0.05, 0.10, 0.20]
-N_GRID = [200, 1000, 5000]
-SEEDS = list(range(1, 21))
+ALPHAS = env_float_list(
+    "WOLFBENCH_EXP1_ALPHAS",
+    "0.0,0.001,0.005,0.0075,0.01,0.015,0.02,0.03,0.05,0.10,0.20",
+)
+N_GRID = env_int_list("WOLFBENCH_EXP1_N_GRID", "200,1000,5000")
+SEEDS = env_seed_list("WOLFBENCH_EXP1_SEEDS", default_count=50)
 
 
 def main():
@@ -31,6 +36,20 @@ def main():
     write_csv(rows, out / "data.csv")
     write_json({"scenario": SCENARIO, "alphas": ALPHAS, "n_grid": N_GRID, "seeds": SEEDS},
                out / "config.json")
+
+    collapse_ci_rows = []
+    for N in N_GRID:
+        for a in ALPHAS:
+            vals = [
+                r["collapse_rate"] for r in rows
+                if r["n_society"] == N and float(r["alpha"]) == float(a)
+            ]
+            collapse_ci_rows.append({
+                "n_society": N,
+                "alpha": a,
+                **binomial_rate_summary(vals),
+            })
+    write_csv(collapse_ci_rows, out / "collapse_rate_wilson_ci.csv")
 
     # ---------- Figure 1: P_collapse vs alpha, one curve per N ----------
     fig, ax = plt.subplots(figsize=(7, 5))

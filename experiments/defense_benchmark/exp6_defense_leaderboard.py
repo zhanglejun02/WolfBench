@@ -24,7 +24,7 @@ from experiments._common import (
     RunSpec, benchmark_exp_dir, run_grid, write_csv, write_json,
 )
 from wolfbench.defense import get_policy, get_track
-from wolfbench.metrics import bootstrap_ci, defense_score, threshold_shift
+from wolfbench.metrics import bootstrap_ci, defense_score, rank_stability, threshold_shift
 from wolfbench.tracks.runner import calibrate_clean_baseline
 
 
@@ -52,7 +52,10 @@ DEFAULT_ALPHA_GRIDS = {
 }
 GLOBAL_ALPHAS = os.getenv("WOLFBENCH_EXP6_ALPHAS")
 N_GRID = _env_int_list("WOLFBENCH_EXP6_N_GRID", os.getenv("WOLFBENCH_EXP6_N_SOCIETY", "500,1000,2000"))
-SEEDS = _env_int_list("WOLFBENCH_EXP6_SEEDS", "1,2,3,4,5")
+SEEDS = _env_int_list(
+    "WOLFBENCH_EXP6_SEEDS",
+    ",".join(str(i) for i in range(1, 31)),
+)
 CI_BOOT = int(os.getenv("WOLFBENCH_EXP6_CI_BOOT", "2000"))
 OUT_NAME = os.getenv("WOLFBENCH_EXP6_OUT", "exp6")
 DISPLAY_SCENARIOS = ("s1", "s2", "s3", "s4")
@@ -199,6 +202,48 @@ def _scenario_metric_means(
     return vals
 
 
+def _seed_level_rank_rows(all_rows: list[dict]) -> list[dict]:
+    """Per-seed score rows used to estimate leaderboard rank stability."""
+    rank_rows: list[dict] = []
+    seeds = sorted({int(r["seed"]) for r in all_rows})
+    scenarios = sorted({str(r["scenario_id"]) for r in all_rows})
+    n_values = sorted({int(r["n_society"]) for r in all_rows})
+    for seed in seeds:
+        for defense_name in DEFENSES:
+            scores = []
+            official_scores = []
+            for scenario in scenarios:
+                alphas = _alphas_for(scenario)
+                for n_society in n_values:
+                    rows_no = [
+                        r for r in all_rows
+                        if int(r["seed"]) == seed
+                        and str(r["scenario_id"]) == scenario
+                        and int(r["n_society"]) == n_society
+                        and r["defense"] == "noguard"
+                    ]
+                    rows_def = [
+                        r for r in all_rows
+                        if int(r["seed"]) == seed
+                        and str(r["scenario_id"]) == scenario
+                        and int(r["n_society"]) == n_society
+                        and r["defense"] == defense_name
+                    ]
+                    if not rows_no or not rows_def:
+                        continue
+                    score = defense_score(rows_no, rows_def, alphas=alphas)["defense_score"]
+                    scores.append(score)
+                    official_scores.append(_official_score(defense_name, score))
+            if scores:
+                rank_rows.append({
+                    "seed": seed,
+                    "defense": defense_name,
+                    "defense_score": float(np.mean(scores)),
+                    "official_score": float(np.mean(official_scores)),
+                })
+    return rank_rows
+
+
 def main():
     out = benchmark_exp_dir(OUT_NAME)
     alpha_grids = {s: _alphas_for(s) for s in SCENARIOS}
@@ -254,6 +299,16 @@ def main():
     _write_display_csv(display_leaderboard, out / "leaderboard_overall.csv")
 
     overall_metrics = []
+    seed_rank_rows = _seed_level_rank_rows(all_rows)
+    rank_stability_summary = rank_stability(
+        seed_rank_rows,
+        score_key="official_score",
+        item_key="defense",
+        sample_key="seed",
+        n_boot=CI_BOOT,
+        top_k=min(3, len(DEFENSES)),
+        seed=17,
+    )
     for d in DEFENSES:
         rows = [r for r in scenario_leaderboard if r["defense"] == d]
         scores = [r["defense_score"] for r in rows]
@@ -303,6 +358,8 @@ def main():
         "leaderboard": scenario_leaderboard,
         "overall": overall_metrics,
         "display_leaderboard": display_leaderboard,
+        "seed_rank_stability": rank_stability_summary,
+        "seed_level_rank_rows": seed_rank_rows,
     }, out / "summary.json")
 
     # ---- Plot DefenseScore bars ----

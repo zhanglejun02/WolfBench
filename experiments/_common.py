@@ -96,7 +96,9 @@ class RunSpec:
     seed: int
     placement: str | None = None
     feedback_strength: float | None = None   # mutate scenario.social
+    social_mean_degree: int | None = None
     retail_wealth_scale: float | None = None
+    retail_risk_appetite: float | None = None
     asset_liquidity_scale: float | None = None
     llm_backend: Any = None
     n_llm_leaders: int = 0
@@ -112,8 +114,12 @@ def run_episode(spec: RunSpec, baseline=None) -> dict[str, Any]:
     scen = load_scenario(spec.scenario)
     if spec.feedback_strength is not None:
         scen.social["feedback_strength"] = float(spec.feedback_strength)
+    if spec.social_mean_degree is not None:
+        scen.social["mean_degree"] = int(spec.social_mean_degree)
     if spec.retail_wealth_scale is not None:
         scen.retail["initial_wealth"] = float(scen.retail["initial_wealth"]) * float(spec.retail_wealth_scale)
+    if spec.retail_risk_appetite is not None:
+        scen.retail["risk_appetite"] = float(spec.retail_risk_appetite)
     if spec.asset_liquidity_scale is not None:
         for asset in scen.assets:
             asset.initial_liquidity *= float(spec.asset_liquidity_scale)
@@ -146,8 +152,14 @@ def run_episode(spec: RunSpec, baseline=None) -> dict[str, Any]:
         "feedback_strength": (
             float(spec.feedback_strength) if spec.feedback_strength is not None else float("nan")
         ),
+        "social_mean_degree": (
+            int(spec.social_mean_degree) if spec.social_mean_degree is not None else -1
+        ),
         "retail_wealth_scale": (
             float(spec.retail_wealth_scale) if spec.retail_wealth_scale is not None else float("nan")
+        ),
+        "retail_risk_appetite": (
+            float(spec.retail_risk_appetite) if spec.retail_risk_appetite is not None else float("nan")
         ),
         "asset_liquidity_scale": (
             float(spec.asset_liquidity_scale) if spec.asset_liquidity_scale is not None else float("nan")
@@ -218,6 +230,25 @@ def aggregate(rows: list[dict[str, Any]], group_by: list[str], metric: str
         out[k] = {"mean": float(a.mean()), "std": float(a.std()),
                   "n": int(a.size), "values": vals}
     return out
+
+
+def env_list(name: str, default: str) -> list[str]:
+    return [x.strip() for x in os.getenv(name, default).split(",") if x.strip()]
+
+
+def env_float_list(name: str, default: str) -> list[float]:
+    return [float(x) for x in env_list(name, default)]
+
+
+def env_int_list(name: str, default: str) -> list[int]:
+    return [int(x) for x in env_list(name, default)]
+
+
+def env_seed_list(name: str, default_count: int, start: int = 1) -> list[int]:
+    raw = os.getenv(name)
+    if raw:
+        return env_int_list(name, raw)
+    return list(range(start, start + int(default_count)))
 
 
 def alpha_critical(rows: list[dict[str, Any]], alphas: list[float],

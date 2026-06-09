@@ -16,15 +16,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments._common import (
-    RunSpec, aggregate, run_grid, scaling_exp_dir, write_csv, write_json,
+    RunSpec, env_float_list, env_seed_list, run_grid, scaling_exp_dir,
+    write_csv, write_json,
 )
+from wolfbench.metrics import binomial_rate_summary
 
 
 SCENARIO = "s1"
-N_SOCIETY = 1000
-ALPHA = 0.015
-FEEDBACKS = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.4, 2.0]
-SEEDS = list(range(1, 21))
+N_SOCIETY = int(__import__("os").getenv("WOLFBENCH_EXP4_N_SOCIETY", "1000"))
+ALPHA = float(__import__("os").getenv("WOLFBENCH_EXP4_ALPHA", "0.015"))
+FEEDBACKS = env_float_list("WOLFBENCH_EXP4_FEEDBACKS", "0.0,0.2,0.4,0.6,0.8,1.0,1.4,2.0")
+SEEDS = env_seed_list("WOLFBENCH_EXP4_SEEDS", default_count=50)
 
 
 def main():
@@ -58,6 +60,8 @@ def main():
             summary.setdefault(str(f), {})[metric] = {
                 "mean": float(vals.mean()), "std": float(vals.std()),
             }
+            if metric == "collapse_rate":
+                summary[str(f)]["collapse_rate_wilson"] = binomial_rate_summary(vals)
         means = np.array(means)
         stds = np.array(stds)
         ax.errorbar(FEEDBACKS, means, yerr=stds, fmt="-o", capsize=4, color="C2")

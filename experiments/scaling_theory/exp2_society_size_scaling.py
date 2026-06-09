@@ -15,19 +15,21 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments._common import (
-    RunSpec, aggregate, run_grid, scaling_exp_dir, write_csv, write_json,
+    RunSpec, aggregate, env_float_list, env_int_list, env_seed_list,
+    run_grid, scaling_exp_dir, write_csv, write_json,
 )
 from experiments.scaling_theory._threshold import bootstrap_logistic_ci, fit_logistic_threshold, linear_alpha_c
+from wolfbench.metrics import binomial_rate_summary
 
 
 SCENARIO = "s1"
-N_GRID = [100, 200, 500, 1000, 2000, 5000]
-ALPHAS = [
-    0.0, 0.0025, 0.005, 0.0075, 0.01, 0.0125, 0.015, 0.0175,
-    0.02, 0.0225, 0.025, 0.03, 0.04,
-]
-SEEDS = list(range(1, 21))
-CI_BOOT = 500
+N_GRID = env_int_list("WOLFBENCH_EXP2_N_GRID", "100,200,500,1000,2000,5000")
+ALPHAS = env_float_list(
+    "WOLFBENCH_EXP2_ALPHAS",
+    "0.0,0.0025,0.005,0.0075,0.01,0.0125,0.015,0.0175,0.02,0.0225,0.025,0.03,0.04",
+)
+SEEDS = env_seed_list("WOLFBENCH_EXP2_SEEDS", default_count=50)
+CI_BOOT = int(__import__("os").getenv("WOLFBENCH_EXP2_CI_BOOT", "2000"))
 
 
 def estimate_alpha_c(rows, N, alphas, threshold: float = 0.5):
@@ -58,6 +60,20 @@ def main():
         "ci_boot": CI_BOOT,
     },
                out / "config.json")
+
+    collapse_ci_rows = []
+    for N in N_GRID:
+        for a in ALPHAS:
+            vals = [
+                r["collapse_rate"] for r in rows
+                if r["n_society"] == N and float(r["alpha"]) == float(a)
+            ]
+            collapse_ci_rows.append({
+                "n_society": N,
+                "alpha": a,
+                **binomial_rate_summary(vals),
+            })
+    write_csv(collapse_ci_rows, out / "collapse_rate_wilson_ci.csv")
 
     # ---------- estimate alpha_c per N ----------
     alpha_cs = []
@@ -158,6 +174,7 @@ def main():
         "alpha_critical_linear": {str(N): ac for N, ac in zip(N_GRID, alpha_cs_linear)},
         "threshold_summary": threshold_rows,
         "p_collapse": {str(N): dict(zip(map(str, ALPHAS), p_curves[N].tolist())) for N in N_GRID},
+        "p_collapse_wilson_ci_csv": "collapse_rate_wilson_ci.csv",
         "p_collapse_logistic_fit": {str(N): dict(zip(map(str, ALPHAS), fitted_curves[N])) for N in N_GRID},
         "fit": fit_info,
     }, out / "summary.json")

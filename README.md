@@ -4,16 +4,20 @@
 
 WolfBench separates two linked contributions:
 
-- **Harmful-agent scaling theory** — the claim that, for a fixed agent-society
-  size `N`, there is a critical harmful-agent ratio `α_c(N)` around which
-  collapse probability changes nonlinearly.
+- **Harmful-agent scaling protocol** — the finite-size claim that, for a fixed
+  agent-society size `N`, there is an estimable critical harmful-agent regime
+  `α_c(N)` around which collapse probability changes nonlinearly. The theory is
+  used to generate testable predictions about how liquidity, graph reach,
+  retail susceptibility and social-market feedback move that regime.
 - **Defense benchmarking** — the evaluation question: *given a financial
   multi-agent system with a tunable fraction `α` of harmful agents, how well
   does a defense model suppress system-level collapse while preserving market
   utility?*
 
 In short: harmful-agent scaling is the phenomenon; WolfBench is the instrument;
-`ThresholdShift` is the defense objective.
+`ThresholdShift` is the defense objective. WolfBench treats threshold behavior as
+a finite-size critical-regime measurement, not as a claim of a strict
+thermodynamic phase transition.
 
 Submissions implement a single interface, [`WolfGuardPolicy`](src/wolfbench/defense/policy.py),
 and are scored on a fixed evaluation grid against canonical attacker
@@ -32,8 +36,13 @@ populations.
   `N` under fixed attacker strategies, repeated seeds, and ablations for
   placement and feedback so that `P_collapse(N, α)` and `α_c(N)` can be measured
   separately from defense performance.
-* **Phase-transition stress test.** Harmful-agent prevalence is varied across
-  the critical regime, so weak defenses are exposed as `α_c` is approached.
+* **Critical-regime stress test.** Harmful-agent prevalence is varied across the
+  estimated critical regime, so weak defenses are exposed as `α_c` is
+  approached.
+* **Calibration and sensitivity audit.** Scenarios are case-inspired and are
+  audited with external order-of-magnitude constraints plus parameter sweeps for
+  liquidity, graph reach, feedback, retail risk appetite and placement. See
+  [`docs/calibration_audit.md`](docs/calibration_audit.md).
 * **Closed-loop evaluation.** Defenses receive a compressed daily observation
   and must choose interventions that propagate through retail behavior, the
   market, and the social graph — not labels in a static dataset.
@@ -58,6 +67,11 @@ populations.
 
 Per-scenario attacker populations are **canonical and fixed** for the public
 leaderboard so that defense scores are directly comparable.
+
+The public scenario configs are intentionally transparent. Paper-facing claims
+should be supported by the cross-mechanism threshold audit and parameter
+sensitivity audit in `experiments.scaling_theory.exp7_cross_mechanism_threshold`
+and `experiments.scaling_theory.exp8_sensitivity_audit`.
 
 ---
 
@@ -103,8 +117,9 @@ only JSON-serializable observations/actions with the environment process.
 ## Tracks
 
 - **Scaling Theory Track** — sweep `α` and `N`, estimate
-  `P_collapse(N, α) = Pr[C=1 | N, α]`, fit `α_c(N)`, and run controlled
-  ablations for placement and social-market feedback.
+  `P_collapse(N, α) = Pr[C=1 | N, α]`, fit `α_c(N)` with bootstrap uncertainty,
+  report Wilson intervals for binary collapse rates, and run controlled
+  ablations for placement, liquidity and social-market feedback.
 - **Defense Benchmark Track** — submit a `WolfGuardPolicy`, maximise
   `DefenseScore` and `ThresholdShift Δα_c`.
 - **Attack Track** — submit attacker policy, maximise harm at low `α`.
