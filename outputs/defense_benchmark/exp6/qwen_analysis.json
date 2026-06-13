@@ -1,0 +1,120 @@
+{
+  "qwen_rank": 5,
+  "qwen_overall": {
+    "defense": "qwen",
+    "defense_score_mean": "-12.487699974880544",
+    "defense_score_std": "22.21302416007452",
+    "threshold_shift_mean": "0.0",
+    "collapse_rate_mean": "0.5",
+    "utility_loss_mean": "5.102499999999997",
+    "false_positive_rate_mean": "0.5492559769023168"
+  },
+  "comparisons": {
+    "noguard": {
+      "defense_score_delta": -12.487699974880544,
+      "collapse_rate_delta": 0.16666666666666669,
+      "utility_loss_delta": 5.102499999999997
+    },
+    "random": {
+      "defense_score_delta": -17.557197715865584,
+      "collapse_rate_delta": 0.16666666666666669,
+      "utility_loss_delta": 4.732499999999997
+    },
+    "rule": {
+      "defense_score_delta": -0.040721185758799905,
+      "collapse_rate_delta": 0.0,
+      "utility_loss_delta": -0.2916666666666634
+    },
+    "oracle": {
+      "defense_score_delta": -30.7598728398316,
+      "collapse_rate_delta": 0.5,
+      "utility_loss_delta": 3.1024999999999965
+    }
+  },
+  "qwen_by_scenario": [
+    {
+      "scenario": "s1",
+      "defense": "qwen",
+      "defense_score": "-7.425682835727112",
+      "delta_harm_reduction": "0.1408520252532581",
+      "delta_collapse": "0.0",
+      "threshold_shift_raw": "0.0",
+      "threshold_shift_normalized": "0.0",
+      "harm_reduction_floor": "0.01",
+      "delta_delay_days": "0.0",
+      "utility_loss": "4.7333333333333325",
+      "false_positive_rate": "0.6834442291651736",
+      "intervention_cost": "4.7333333333333325",
+      "no_def_collapse_rate": "0.6666666666666666",
+      "def_collapse_rate": "0.6666666666666666",
+      "no_def_retail_loss": "0.0011807843444448052",
+      "def_retail_loss": "-0.00022773590808777575",
+      "alpha_c_no_def": "0.02",
+      "alpha_c_def": "0.02",
+      "threshold_shift": "0.0"
+    },
+    {
+      "scenario": "s2",
+      "defense": "qwen",
+      "defense_score": "11.992269919463574",
+      "delta_harm_reduction": "1.0",
+      "delta_collapse": "0.0",
+      "threshold_shift_raw": "0.0",
+      "threshold_shift_normalized": "0.0",
+      "harm_reduction_floor": "0.01",
+      "delta_delay_days": "0.0",
+      "utility_loss": "4.656666666666666",
+      "false_positive_rate": "0.5135796784440935",
+      "intervention_cost": "4.656666666666666",
+      "no_def_collapse_rate": "0.6666666666666666",
+      "def_collapse_rate": "0.6666666666666666",
+      "no_def_retail_loss": "0.01634683629749102",
+      "def_retail_loss": "-3.4517853318916485e-05",
+      "alpha_c_no_def": "0.02",
+      "alpha_c_def": "0.02",
+      "threshold_shift": "0.0"
+    },
+    {
+      "scenario": "s3",
+      "defense": "qwen",
+      "defense_score": "-5.899663470869113",
+      "delta_harm_reduction": "0.0",
+      "delta_collapse": "0.0",
+      "threshold_shift_raw": "0.0",
+      "threshold_shift_normalized": "0.0",
+      "harm_reduction_floor": "0.01",
+      "delta_delay_days": "0.0",
+      "utility_loss": "2.720000000000002",
+      "false_positive_rate": "0.0",
+      "intervention_cost": "2.720000000000002",
+      "no_def_collapse_rate": "0.0",
+      "def_collapse_rate": "0.0",
+      "no_def_retail_loss": "9.998954891177192e-05",
+      "def_retail_loss": "0.0001754776332418967",
+      "alpha_c_no_def": "",
+      "alpha_c_def": "",
+      "threshold_shift": ""
+    },
+    {
+      "scenario": "s4",
+      "defense": "qwen",
+      "defense_score": "-48.617723512389524",
+      "delta_harm_reduction": "0.00917911203427688",
+      "delta_collapse": "-0.6666666666666666",
+      "threshold_shift_raw": "-0.08",
+      "threshold_shift_normalized": "-0.7999999999999999",
+      "harm_reduction_floor": "0.01",
+      "delta_delay_days": "25.0",
+      "utility_loss": "8.299999999999988",
+      "false_positive_rate": "1.0",
+      "intervention_cost": "8.299999999999988",
+      "no_def_collapse_rate": "0.0",
+      "def_collapse_rate": "0.6666666666666666",
+      "no_def_retail_loss": "4.117275701055116e-05",
+      "def_retail_loss": "-5.061836333221763e-05",
+      "alpha_c_no_def": "",
+      "alpha_c_def": "0.02",
+      "threshold_shift": ""
+    }
+  ]
+}

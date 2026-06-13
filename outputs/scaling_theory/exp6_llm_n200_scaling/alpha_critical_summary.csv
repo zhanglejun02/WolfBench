@@ -1,0 +1,2 @@
+scenario,n_society,n_llm_leaders,llm_provider,llm_model,alpha_c_logistic,alpha_c_ci_low,alpha_c_ci_high,alpha_c_linear,logistic_slope,transition_width_10_90,fit_method,bootstrap_successes
+s1,200,1,vllm,qwen3-8b,0.013413717586260287,0.010790165306892693,0.016313000579996875,0.0155,96.56460789398052,0.0455078651538373,logistic_fit,500

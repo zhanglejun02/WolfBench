@@ -1,0 +1,178 @@
+{
+  "eligible_defenses": [
+    "noguard",
+    "random"
+  ],
+  "upper_bounds": [],
+  "defenses": [
+    "noguard",
+    "random"
+  ],
+  "scenarios": [
+    "s1"
+  ],
+  "alpha_grids": {
+    "s1": [
+      0.0,
+      0.01
+    ]
+  },
+  "n_grid": [
+    100
+  ],
+  "seeds": [
+    1,
+    2
+  ],
+  "leaderboard": [
+    {
+      "scenario": "s1",
+      "n_society": 100,
+      "defense": "noguard",
+      "track": "control",
+      "eligible": true,
+      "official_score": 0.0,
+      "defense_score": 0.0,
+      "delta_harm_reduction": 0.0,
+      "gated_delta_harm_reduction": 0.0,
+      "safety_gate": 0.0,
+      "delta_collapse": 0.0,
+      "threshold_shift_raw": 0.0,
+      "threshold_shift_normalized": 0.0,
+      "harm_reduction_floor": 0.01,
+      "delta_delay_days": 0.0,
+      "utility_loss": 0.0,
+      "false_positive_rate": 0.0,
+      "intervention_cost": 0.0,
+      "no_def_collapse_rate": 0.0,
+      "def_collapse_rate": 0.0,
+      "no_def_retail_loss": -0.00019925001437580235,
+      "def_retail_loss": -0.00019925001437580235,
+      "alpha_c_no_def": null,
+      "alpha_c_def": null,
+      "threshold_shift": null
+    },
+    {
+      "scenario": "s1",
+      "n_society": 100,
+      "defense": "random",
+      "track": "control",
+      "eligible": true,
+      "official_score": -0.8218472201646033,
+      "defense_score": -0.8218472201646033,
+      "delta_harm_reduction": 0.0,
+      "gated_delta_harm_reduction": 0.0,
+      "safety_gate": 0.0,
+      "delta_collapse": 0.0,
+      "threshold_shift_raw": 0.0,
+      "threshold_shift_normalized": 0.0,
+      "harm_reduction_floor": 0.01,
+      "delta_delay_days": 0.0,
+      "utility_loss": 0.3700000000000001,
+      "false_positive_rate": 0.0,
+      "intervention_cost": 0.3700000000000001,
+      "no_def_collapse_rate": 0.0,
+      "def_collapse_rate": 0.0,
+      "no_def_retail_loss": -0.00019925001437580235,
+      "def_retail_loss": 3.7695555654704226e-06,
+      "alpha_c_no_def": null,
+      "alpha_c_def": null,
+      "threshold_shift": null
+    }
+  ],
+  "overall": [
+    {
+      "defense": "noguard",
+      "track": "control",
+      "eligible": true,
+      "official_score_mean": 0.0,
+      "official_score_ci_low": 0.0,
+      "official_score_ci_high": 0.0,
+      "defense_score_mean": 0.0,
+      "defense_score_std": 0.0,
+      "defense_score_ci_low": 0.0,
+      "defense_score_ci_high": 0.0,
+      "threshold_shift_mean": 0.0,
+      "collapse_rate_mean": 0.0,
+      "utility_loss_mean": 0.0,
+      "false_positive_rate_mean": 0.0
+    },
+    {
+      "defense": "random",
+      "track": "control",
+      "eligible": true,
+      "official_score_mean": -0.8218472201646033,
+      "official_score_ci_low": -0.8218472201646033,
+      "official_score_ci_high": -0.8218472201646033,
+      "defense_score_mean": -0.8218472201646033,
+      "defense_score_std": 0.0,
+      "defense_score_ci_low": -0.8218472201646033,
+      "defense_score_ci_high": -0.8218472201646033,
+      "threshold_shift_mean": 0.0,
+      "collapse_rate_mean": 0.0,
+      "utility_loss_mean": 0.3700000000000001,
+      "false_positive_rate_mean": 0.0
+    }
+  ],
+  "display_leaderboard": [
+    {
+      "Defense model": "noguard",
+      "S1": 0.0,
+      "S2": "",
+      "S3": "",
+      "S4": "",
+      "Avg DefenseScore": 0.0,
+      "Avg ThresholdShift": 0.0,
+      "Worst Score": 0.0
+    },
+    {
+      "Defense model": "random",
+      "S1": -0.8218472201646033,
+      "S2": "",
+      "S3": "",
+      "S4": "",
+      "Avg DefenseScore": -0.8218472201646033,
+      "Avg ThresholdShift": 0.0,
+      "Worst Score": -0.8218472201646033
+    }
+  ],
+  "seed_rank_stability": {
+    "kendall_tau_mean": 1.0,
+    "kendall_tau_ci_low": 1.0,
+    "kendall_tau_ci_high": 1.0,
+    "top_k_overlap_mean": 1.0,
+    "top_k_overlap_ci_low": 1.0,
+    "top_k_overlap_ci_high": 1.0,
+    "reference_ranking": [
+      "noguard",
+      "random"
+    ],
+    "n_boot": 10
+  },
+  "seed_level_rank_rows": [
+    {
+      "seed": 1,
+      "defense": "noguard",
+      "defense_score": 0.0,
+      "official_score": 0.0
+    },
+    {
+      "seed": 1,
+      "defense": "random",
+      "defense_score": -0.8218472201646033,
+      "official_score": -0.8218472201646033
+    },
+    {
+      "seed": 2,
+      "defense": "noguard",
+      "defense_score": 0.0,
+      "official_score": 0.0
+    },
+    {
+      "seed": 2,
+      "defense": "random",
+      "defense_score": -0.8218472201646033,
+      "official_score": -0.8218472201646033
+    }
+  ]
+}

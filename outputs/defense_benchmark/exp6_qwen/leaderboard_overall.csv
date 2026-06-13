@@ -1,0 +1,3 @@
+defense,track,official_score_mean,official_score_ci_low,official_score_ci_high,defense_score_mean,defense_score_std,defense_score_ci_low,defense_score_ci_high,threshold_shift_mean,collapse_rate_mean,utility_loss_mean,false_positive_rate_mean
+noguard,control,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.38346560846560845,0.0,0.0
+qwen,llm_from_scratch,-11.197063311089096,-17.93093343661079,-5.138731232125337,-11.197063311089096,11.718474124543597,-17.93093343661079,-5.138731232125337,-0.014083333333333331,0.41124338624338624,5.100223809523807,0.5961523318562673

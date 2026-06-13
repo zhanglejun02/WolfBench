@@ -1,0 +1,3 @@
+scenario,n_society,defense,track,eligible,official_score,defense_score,delta_harm_reduction,gated_delta_harm_reduction,safety_gate,delta_collapse,threshold_shift_raw,threshold_shift_normalized,harm_reduction_floor,delta_delay_days,utility_loss,false_positive_rate,intervention_cost,no_def_collapse_rate,def_collapse_rate,no_def_retail_loss,def_retail_loss,alpha_c_no_def,alpha_c_def,threshold_shift
+s1,50,noguard,control,True,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.01,0.0,0.0,0.0,0.0,0.0,0.0,-0.00047267585332214367,-0.00047267585332214367,,,
+s1,50,rule,rule_baseline,True,-12.783453301545599,-12.783453301545599,0.0,0.0,0.0,0.0,0.0,0.0,0.01,0.0,5.849999999999995,0.9824561403508771,5.849999999999995,0.0,0.0,-0.00047267585332214367,-0.00042572947469935753,,,

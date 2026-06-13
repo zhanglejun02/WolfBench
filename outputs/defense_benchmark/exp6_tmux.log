@@ -1,0 +1,260 @@
+/root/miniconda3/lib/python3.10/site-packages/numpy/core/_methods.py:269: RuntimeWarning: Degrees of freedom <= 0 for slice
+  ret = _var(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/root/miniconda3/lib/python3.10/site-packages/numpy/core/_methods.py:226: RuntimeWarning: invalid value encountered in divide
+  arrmean = um.true_divide(arrmean, div, out=arrmean,
+/root/miniconda3/lib/python3.10/site-packages/numpy/core/_methods.py:261: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+
+=== s1 / N=500 / noguard ===
+[  20/30]    5.9s elapsed
+[  30/30]    8.9s elapsed
+
+=== s1 / N=500 / random ===
+[  20/30]    6.0s elapsed
+[  30/30]    9.0s elapsed
+
+=== s1 / N=500 / rule ===
+[  20/30]    5.5s elapsed
+[  30/30]    8.1s elapsed
+
+=== s1 / N=500 / oracle ===
+[  20/30]    4.7s elapsed
+[  30/30]    6.9s elapsed
+
+=== s1 / N=1000 / noguard ===
+[  20/30]   11.7s elapsed
+[  30/30]   17.7s elapsed
+
+=== s1 / N=1000 / random ===
+[  20/30]   12.1s elapsed
+[  30/30]   18.4s elapsed
+
+=== s1 / N=1000 / rule ===
+[  20/30]   11.0s elapsed
+[  30/30]   16.2s elapsed
+
+=== s1 / N=1000 / oracle ===
+[  20/30]    9.4s elapsed
+[  30/30]   13.6s elapsed
+
+=== s1 / N=2000 / noguard ===
+[  20/30]   23.3s elapsed
+[  30/30]   35.3s elapsed
+
+=== s1 / N=2000 / random ===
+[  20/30]   24.0s elapsed
+[  30/30]   36.4s elapsed
+
+=== s1 / N=2000 / rule ===
+[  20/30]   21.6s elapsed
+[  30/30]   32.2s elapsed
+
+=== s1 / N=2000 / oracle ===
+[  20/30]   18.8s elapsed
+[  30/30]   27.2s elapsed
+
+=== s2 / N=500 / noguard ===
+[  20/35]    5.7s elapsed
+[  35/35]   10.1s elapsed
+
+=== s2 / N=500 / random ===
+[  20/35]    5.9s elapsed
+[  35/35]   10.4s elapsed
+
+=== s2 / N=500 / rule ===
+[  20/35]    5.7s elapsed
+[  35/35]    9.8s elapsed
+
+=== s2 / N=500 / oracle ===
+[  20/35]    5.9s elapsed
+[  35/35]   10.4s elapsed
+
+=== s2 / N=1000 / noguard ===
+[  20/35]   11.5s elapsed
+[  35/35]   20.5s elapsed
+
+=== s2 / N=1000 / random ===
+[  20/35]   11.9s elapsed
+[  35/35]   21.0s elapsed
+
+=== s2 / N=1000 / rule ===
+[  20/35]   11.1s elapsed
+[  35/35]   19.0s elapsed
+
+=== s2 / N=1000 / oracle ===
+[  20/35]   11.8s elapsed
+[  35/35]   21.1s elapsed
+
+=== s2 / N=2000 / noguard ===
+[  20/35]   23.3s elapsed
+[  35/35]   41.5s elapsed
+
+=== s2 / N=2000 / random ===
+[  20/35]   24.0s elapsed
+[  35/35]   42.5s elapsed
+
+=== s2 / N=2000 / rule ===
+[  20/35]   22.0s elapsed
+[  35/35]   37.5s elapsed
+
+=== s2 / N=2000 / oracle ===
+[  20/35]   23.9s elapsed
+[  35/35]   42.8s elapsed
+
+=== s3 / N=500 / noguard ===
+[  20/25]    6.3s elapsed
+[  25/25]    8.1s elapsed
+
+=== s3 / N=500 / random ===
+[  20/25]    6.5s elapsed
+[  25/25]    8.3s elapsed
+
+=== s3 / N=500 / rule ===
+[  20/25]    6.5s elapsed
+[  25/25]    8.4s elapsed
+
+=== s3 / N=500 / oracle ===
+[  20/25]    4.0s elapsed
+[  25/25]    4.6s elapsed
+
+=== s3 / N=1000 / noguard ===
+[  20/25]   12.5s elapsed
+[  25/25]   16.0s elapsed
+
+=== s3 / N=1000 / random ===
+[  20/25]   12.9s elapsed
+[  25/25]   16.5s elapsed
+
+=== s3 / N=1000 / rule ===
+[  20/25]   13.0s elapsed
+[  25/25]   16.6s elapsed
+
+=== s3 / N=1000 / oracle ===
+[  20/25]    7.8s elapsed
+[  25/25]    9.1s elapsed
+
+=== s3 / N=2000 / noguard ===
+[  20/25]   25.4s elapsed
+[  25/25]   32.7s elapsed
+
+=== s3 / N=2000 / random ===
+[  20/25]   26.1s elapsed
+[  25/25]   33.5s elapsed
+
+=== s3 / N=2000 / rule ===
+[  20/25]   26.3s elapsed
+[  25/25]   33.8s elapsed
+
+=== s3 / N=2000 / oracle ===
+[  20/25]   15.7s elapsed
+[  25/25]   18.2s elapsed
+
+=== s4 / N=500 / noguard ===
+[  20/45]    5.9s elapsed
+[  40/45]   11.5s elapsed
+[  45/45]   12.8s elapsed
+
+=== s4 / N=500 / random ===
+[  20/45]    5.9s elapsed
+[  40/45]   11.6s elapsed
+[  45/45]   12.9s elapsed
+
+=== s4 / N=500 / rule ===
+[  20/45]    6.2s elapsed
+[  40/45]   12.0s elapsed
+[  45/45]   13.4s elapsed
+
+=== s4 / N=500 / oracle ===
+[  20/45]    4.8s elapsed
+[  40/45]    9.0s elapsed
+[  45/45]    9.9s elapsed
+
+=== s4 / N=1000 / noguard ===
+[  20/45]   11.7s elapsed
+[  40/45]   22.9s elapsed
+[  45/45]   25.4s elapsed
+
+=== s4 / N=1000 / random ===
+[  20/45]   11.8s elapsed
+[  40/45]   23.0s elapsed
+[  45/45]   25.6s elapsed
+
+=== s4 / N=1000 / rule ===
+[  20/45]   12.2s elapsed
+[  40/45]   23.9s elapsed
+[  45/45]   26.6s elapsed
+
+=== s4 / N=1000 / oracle ===
+[  20/45]    9.6s elapsed
+[  40/45]   17.8s elapsed
+[  45/45]   19.7s elapsed
+
+=== s4 / N=2000 / noguard ===
+[  20/45]   23.7s elapsed
+[  40/45]   46.1s elapsed
+[  45/45]   51.2s elapsed
+
+=== s4 / N=2000 / random ===
+[  20/45]   23.6s elapsed
+[  40/45]   46.1s elapsed
+[  45/45]   51.3s elapsed
+
+=== s4 / N=2000 / rule ===
+[  20/45]   24.7s elapsed
+[  40/45]   48.4s elapsed
+[  45/45]   53.8s elapsed
+
+=== s4 / N=2000 / oracle ===
+[  20/45]   19.2s elapsed
+[  40/45]   35.6s elapsed
+[  45/45]   39.3s elapsed
+
+Leaderboard written to /root/WolfBench/outputs/exp6
+   s1 noguard   N=500   score=   0.00  Δα_c=0.0
+   s1 random    N=500   score=  -1.56  Δα_c=0.0
+   s1 rule      N=500   score= -13.30  Δα_c=0.0
+   s1 oracle    N=500   score=   1.46  Δα_c=0.0
+   s1 noguard   N=1000  score=   0.00  Δα_c=0.0
+   s1 random    N=1000  score=  -3.04  Δα_c=0.0
+   s1 rule      N=1000  score= -14.92  Δα_c=0.0
+   s1 oracle    N=1000  score=   9.07  Δα_c=None
+   s1 noguard   N=2000  score=   0.00  Δα_c=0.0
+   s1 random    N=2000  score=  -2.30  Δα_c=0.0
+   s1 rule      N=2000  score= -14.21  Δα_c=0.0
+   s1 oracle    N=2000  score=   9.80  Δα_c=None
+   s2 noguard   N=500   score=   0.00  Δα_c=0.0
+   s2 random    N=500   score=  15.60  Δα_c=None
+   s2 rule      N=500   score=   4.17  Δα_c=None
+   s2 oracle    N=500   score=   1.11  Δα_c=0.0
+   s2 noguard   N=1000  score=   0.00  Δα_c=0.0
+   s2 random    N=1000  score=  16.41  Δα_c=0.00075
+   s2 rule      N=1000  score=   4.04  Δα_c=0.00075
+   s2 oracle    N=1000  score=  -0.38  Δα_c=0.0
+   s2 noguard   N=2000  score=   0.00  Δα_c=0.0
+   s2 random    N=2000  score=   5.57  Δα_c=0.00025
+   s2 rule      N=2000  score=  -7.10  Δα_c=0.00025
+   s2 oracle    N=2000  score=  -0.38  Δα_c=0.0
+   s3 noguard   N=500   score=   0.00  Δα_c=None
+   s3 random    N=500   score=  -0.82  Δα_c=None
+   s3 rule      N=500   score=  -0.58  Δα_c=None
+   s3 oracle    N=500   score=  -5.23  Δα_c=None
+   s3 noguard   N=1000  score=   0.00  Δα_c=None
+   s3 random    N=1000  score=  -0.82  Δα_c=None
+   s3 rule      N=1000  score=  -0.57  Δα_c=None
+   s3 oracle    N=1000  score=  -5.23  Δα_c=None
+   s3 noguard   N=2000  score=   0.00  Δα_c=0.0
+   s3 random    N=2000  score=  -0.82  Δα_c=0.0
+   s3 rule      N=2000  score=  -0.66  Δα_c=0.0
+   s3 oracle    N=2000  score=   8.10  Δα_c=None
+   s4 noguard   N=500   score=   0.00  Δα_c=0.0
+   s4 random    N=500   score=  20.26  Δα_c=0.18000000000000002
+   s4 rule      N=500   score= -21.02  Δα_c=-0.01
+   s4 oracle    N=500   score=  21.78  Δα_c=None
+   s4 noguard   N=1000  score=   0.00  Δα_c=0.0
+   s4 random    N=1000  score=   4.89  Δα_c=0.05000000000000002
+   s4 rule      N=1000  score= -38.38  Δα_c=-0.13999999999999999
+   s4 oracle    N=1000  score=   7.21  Δα_c=None
+   s4 noguard   N=2000  score=   0.00  Δα_c=0.0
+   s4 random    N=2000  score=  19.06  Δα_c=0.17
+   s4 rule      N=2000  score= -24.61  Δα_c=-0.019999999999999997
+   s4 oracle    N=2000  score=  21.27  Δα_c=None

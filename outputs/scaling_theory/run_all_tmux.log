@@ -1,0 +1,297 @@
+
+=== experiments.scaling_theory.exp1_alpha_scaling ===
+Running 660 episodes for exp1...
+[  10/660]    1.2s elapsed
+[  20/660]    2.4s elapsed
+[  30/660]    3.6s elapsed
+[  40/660]    4.8s elapsed
+[  50/660]    6.1s elapsed
+[  60/660]    7.3s elapsed
+[  70/660]    8.5s elapsed
+[  80/660]    9.8s elapsed
+[  90/660]   11.0s elapsed
+[ 100/660]   12.2s elapsed
+[ 110/660]   13.4s elapsed
+[ 120/660]   14.6s elapsed
+[ 130/660]   15.8s elapsed
+[ 140/660]   17.1s elapsed
+[ 150/660]   18.2s elapsed
+[ 160/660]   19.5s elapsed
+[ 170/660]   20.7s elapsed
+[ 180/660]   21.9s elapsed
+[ 190/660]   23.2s elapsed
+[ 200/660]   24.4s elapsed
+[ 210/660]   25.5s elapsed
+[ 220/660]   26.7s elapsed
+[ 230/660]   32.4s elapsed
+[ 240/660]   38.2s elapsed
+[ 250/660]   44.0s elapsed
+[ 260/660]   49.8s elapsed
+[ 270/660]   55.6s elapsed
+[ 280/660]   61.4s elapsed
+[ 290/660]   67.4s elapsed
+[ 300/660]   73.2s elapsed
+[ 310/660]   79.1s elapsed
+[ 320/660]   85.1s elapsed
+[ 330/660]   90.9s elapsed
+[ 340/660]   96.8s elapsed
+[ 350/660]  102.8s elapsed
+[ 360/660]  108.8s elapsed
+[ 370/660]  114.7s elapsed
+[ 380/660]  120.7s elapsed
+[ 390/660]  126.8s elapsed
+[ 400/660]  132.9s elapsed
+[ 410/660]  139.3s elapsed
+[ 420/660]  145.6s elapsed
+[ 430/660]  152.6s elapsed
+[ 440/660]  159.7s elapsed
+[ 450/660]  188.9s elapsed
+[ 460/660]  217.7s elapsed
+[ 470/660]  246.7s elapsed
+[ 480/660]  276.1s elapsed
+[ 490/660]  305.6s elapsed
+[ 500/660]  334.9s elapsed
+[ 510/660]  364.5s elapsed
+[ 520/660]  394.5s elapsed
+[ 530/660]  424.5s elapsed
+[ 540/660]  454.2s elapsed
+[ 550/660]  484.5s elapsed
+[ 560/660]  515.7s elapsed
+[ 570/660]  547.4s elapsed
+[ 580/660]  578.5s elapsed
+[ 590/660]  611.6s elapsed
+[ 600/660]  644.7s elapsed
+[ 610/660]  682.3s elapsed
+[ 620/660]  719.9s elapsed
+[ 630/660]  773.3s elapsed
+[ 640/660]  826.3s elapsed
+[ 650/660]  913.8s elapsed
+[ 660/660] 1000.4s elapsed
+Done. Wrote /root/WolfBench/outputs/scaling_theory/exp1_alpha_scaling
+  (1001.3s)
+
+=== experiments.scaling_theory.exp2_society_size_scaling ===
+Running 1560 episodes for exp2...
+[  10/1560]    0.7s elapsed
+[  20/1560]    1.3s elapsed
+[  30/1560]    1.9s elapsed
+[  40/1560]    2.6s elapsed
+[  50/1560]    3.2s elapsed
+[  60/1560]    3.8s elapsed
+[  70/1560]    4.5s elapsed
+[  80/1560]    5.1s elapsed
+[  90/1560]    5.8s elapsed
+[ 100/1560]    6.5s elapsed
+[ 110/1560]    7.1s elapsed
+[ 120/1560]    7.7s elapsed
+[ 130/1560]    8.4s elapsed
+[ 140/1560]    9.0s elapsed
+[ 150/1560]    9.7s elapsed
+[ 160/1560]   10.3s elapsed
+[ 170/1560]   11.0s elapsed
+[ 180/1560]   11.6s elapsed
+[ 190/1560]   12.2s elapsed
+[ 200/1560]   12.9s elapsed
+[ 210/1560]   13.5s elapsed
+[ 220/1560]   14.2s elapsed
+[ 230/1560]   14.8s elapsed
+[ 240/1560]   15.5s elapsed
+[ 250/1560]   16.1s elapsed
+[ 260/1560]   16.7s elapsed
+[ 270/1560]   18.0s elapsed
+[ 280/1560]   19.2s elapsed
+[ 290/1560]   20.4s elapsed
+[ 300/1560]   21.6s elapsed
+[ 310/1560]   22.8s elapsed
+[ 320/1560]   24.0s elapsed
+[ 330/1560]   25.2s elapsed
+[ 340/1560]   26.5s elapsed
+[ 350/1560]   27.7s elapsed
+[ 360/1560]   28.9s elapsed
+[ 370/1560]   30.1s elapsed
+[ 380/1560]   31.3s elapsed
+[ 390/1560]   32.5s elapsed
+[ 400/1560]   33.8s elapsed
+[ 410/1560]   35.0s elapsed
+[ 420/1560]   36.2s elapsed
+[ 430/1560]   37.4s elapsed
+[ 440/1560]   38.6s elapsed
+[ 450/1560]   39.8s elapsed
+[ 460/1560]   41.1s elapsed
+[ 470/1560]   42.3s elapsed
+[ 480/1560]   43.5s elapsed
+[ 490/1560]   44.7s elapsed
+[ 500/1560]   45.9s elapsed
+[ 510/1560]   47.1s elapsed
+[ 520/1560]   48.3s elapsed
+[ 530/1560]   51.3s elapsed
+[ 540/1560]   54.2s elapsed
+[ 550/1560]   57.1s elapsed
+[ 560/1560]   60.1s elapsed
+[ 570/1560]   63.1s elapsed
+[ 580/1560]   66.0s elapsed
+[ 590/1560]   69.0s elapsed
+[ 600/1560]   71.9s elapsed
+[ 610/1560]   74.9s elapsed
+[ 620/1560]   77.8s elapsed
+[ 630/1560]   80.8s elapsed
+[ 640/1560]   83.7s elapsed
+[ 650/1560]   86.7s elapsed
+[ 660/1560]   89.7s elapsed
+[ 670/1560]   92.7s elapsed
+[ 680/1560]   95.6s elapsed
+[ 690/1560]   98.6s elapsed
+[ 700/1560]  101.6s elapsed
+[ 710/1560]  104.6s elapsed
+[ 720/1560]  107.6s elapsed
+[ 730/1560]  110.6s elapsed
+[ 740/1560]  113.6s elapsed
+[ 750/1560]  116.5s elapsed
+[ 760/1560]  119.5s elapsed
+[ 770/1560]  122.5s elapsed
+[ 780/1560]  125.5s elapsed
+[ 790/1560]  131.3s elapsed
+[ 800/1560]  137.1s elapsed
+[ 810/1560]  142.9s elapsed
+[ 820/1560]  148.8s elapsed
+[ 830/1560]  154.6s elapsed
+[ 840/1560]  160.5s elapsed
+[ 850/1560]  166.3s elapsed
+[ 860/1560]  172.2s elapsed
+[ 870/1560]  178.3s elapsed
+[ 880/1560]  184.3s elapsed
+[ 890/1560]  190.3s elapsed
+[ 900/1560]  196.4s elapsed
+[ 910/1560]  202.4s elapsed
+[ 920/1560]  208.3s elapsed
+[ 930/1560]  214.2s elapsed
+[ 940/1560]  220.2s elapsed
+[ 950/1560]  226.2s elapsed
+[ 960/1560]  232.1s elapsed
+[ 970/1560]  238.1s elapsed
+[ 980/1560]  244.1s elapsed
+[ 990/1560]  250.1s elapsed
+[1000/1560]  256.1s elapsed
+[1010/1560]  262.2s elapsed
+[1020/1560]  268.2s elapsed
+[1030/1560]  274.3s elapsed
+[1040/1560]  280.4s elapsed
+[1050/1560]  292.3s elapsed
+[1060/1560]  304.1s elapsed
+[1070/1560]  316.0s elapsed
+[1080/1560]  327.7s elapsed
+[1090/1560]  339.5s elapsed
+[1100/1560]  351.2s elapsed
+[1110/1560]  362.9s elapsed
+[1120/1560]  374.7s elapsed
+[1130/1560]  386.6s elapsed
+[1140/1560]  398.6s elapsed
+[1150/1560]  410.7s elapsed
+[1160/1560]  422.8s elapsed
+[1170/1560]  434.9s elapsed
+[1180/1560]  446.9s elapsed
+[1190/1560]  458.8s elapsed
+[1200/1560]  470.8s elapsed
+[1210/1560]  482.8s elapsed
+[1220/1560]  494.9s elapsed
+[1230/1560]  507.0s elapsed
+[1240/1560]  519.2s elapsed
+[1250/1560]  531.5s elapsed
+[1260/1560]  543.6s elapsed
+[1270/1560]  555.9s elapsed
+[1280/1560]  568.1s elapsed
+[1290/1560]  580.6s elapsed
+[1300/1560]  593.1s elapsed
+[1310/1560]  622.1s elapsed
+[1320/1560]  651.4s elapsed
+[1330/1560]  680.7s elapsed
+[1340/1560]  710.0s elapsed
+[1350/1560]  739.4s elapsed
+[1360/1560]  768.9s elapsed
+[1370/1560]  798.4s elapsed
+[1380/1560]  828.7s elapsed
+[1390/1560]  858.7s elapsed
+[1400/1560]  888.5s elapsed
+[1410/1560]  918.5s elapsed
+[1420/1560]  948.5s elapsed
+[1430/1560]  978.8s elapsed
+[1440/1560] 1009.0s elapsed
+[1450/1560] 1039.4s elapsed
+[1460/1560] 1070.2s elapsed
+[1470/1560] 1101.3s elapsed
+[1480/1560] 1132.4s elapsed
+[1490/1560] 1163.7s elapsed
+[1500/1560] 1195.2s elapsed
+[1510/1560] 1227.3s elapsed
+[1520/1560] 1259.3s elapsed
+[1530/1560] 1292.0s elapsed
+[1540/1560] 1325.2s elapsed
+[1550/1560] 1360.6s elapsed
+[1560/1560] 1395.8s elapsed
+Done. Wrote /root/WolfBench/outputs/scaling_theory/exp2_society_size_scaling
+  (1401.7s)
+
+=== experiments.scaling_theory.exp3_centrality_placement ===
+Running 80 episodes for exp3...
+[  10/80]    3.0s elapsed
+[  20/80]    5.9s elapsed
+[  30/80]    9.1s elapsed
+[  40/80]   12.2s elapsed
+[  50/80]   23.9s elapsed
+[  60/80]   35.6s elapsed
+[  70/80]   48.2s elapsed
+[  80/80]   60.7s elapsed
+Done. Wrote /root/WolfBench/outputs/scaling_theory/exp3_centrality_placement
+  (61.0s)
+
+=== experiments.scaling_theory.exp4_feedback_ablation ===
+Running 160 episodes for exp4...
+[  10/160]    5.9s elapsed
+[  20/160]   11.9s elapsed
+[  30/160]   17.8s elapsed
+[  40/160]   23.7s elapsed
+[  50/160]   29.6s elapsed
+[  60/160]   35.5s elapsed
+[  70/160]   41.4s elapsed
+[  80/160]   47.4s elapsed
+[  90/160]   53.3s elapsed
+[ 100/160]   59.2s elapsed
+[ 110/160]   65.1s elapsed
+[ 120/160]   71.1s elapsed
+[ 130/160]   77.0s elapsed
+[ 140/160]   83.0s elapsed
+[ 150/160]   88.9s elapsed
+[ 160/160]   94.8s elapsed
+Done. Wrote /root/WolfBench/outputs/scaling_theory/exp4_feedback_ablation
+  (95.2s)
+
+=== experiments.scaling_theory.exp5_capacity_control ===
+Running 1200 episodes for exp5...
+[  50/1200]    6.1s elapsed
+[ 100/1200]   12.2s elapsed
+[ 150/1200]   18.2s elapsed
+[ 200/1200]   24.3s elapsed
+[ 250/1200]   54.1s elapsed
+[ 300/1200]   83.8s elapsed
+[ 350/1200]  114.3s elapsed
+[ 400/1200]  144.6s elapsed
+[ 450/1200]  292.1s elapsed
+[ 500/1200]  443.9s elapsed
+[ 550/1200]  599.5s elapsed
+[ 600/1200]  760.5s elapsed
+[ 650/1200]  766.6s elapsed
+[ 700/1200]  772.6s elapsed
+[ 750/1200]  778.7s elapsed
+[ 800/1200]  784.7s elapsed
+[ 850/1200]  814.1s elapsed
+[ 900/1200]  843.7s elapsed
+[ 950/1200]  873.4s elapsed
+[1000/1200]  903.3s elapsed
+[1050/1200] 1050.9s elapsed
+[1100/1200] 1203.3s elapsed
+[1150/1200] 1359.0s elapsed
+[1200/1200] 1521.1s elapsed
+Done. Wrote /root/WolfBench/outputs/scaling_theory/exp5_capacity_control
+  (1527.0s)
+
+Scaling theory experiments done in 4086.3s

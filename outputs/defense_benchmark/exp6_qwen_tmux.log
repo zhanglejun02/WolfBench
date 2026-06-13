@@ -1,0 +1,134 @@
+/root/miniconda3/lib/python3.10/site-packages/numpy/core/_methods.py:269: RuntimeWarning: Degrees of freedom <= 0 for slice
+  ret = _var(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/root/miniconda3/lib/python3.10/site-packages/numpy/core/_methods.py:226: RuntimeWarning: invalid value encountered in divide
+  arrmean = um.true_divide(arrmean, div, out=arrmean,
+/root/miniconda3/lib/python3.10/site-packages/numpy/core/_methods.py:261: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+
+=== s1 / N=500 / noguard ===
+[  20/30]    6.0s elapsed
+[  30/30]    9.0s elapsed
+
+=== s1 / N=500 / qwen ===
+[  20/30] 1031.2s elapsed
+[  30/30] 1586.4s elapsed
+
+=== s1 / N=1000 / noguard ===
+[  20/30]   11.9s elapsed
+[  30/30]   18.0s elapsed
+
+=== s1 / N=1000 / qwen ===
+[  20/30] 1036.4s elapsed
+[  30/30] 1581.9s elapsed
+
+=== s1 / N=2000 / noguard ===
+[  20/30]   24.0s elapsed
+[  30/30]   36.3s elapsed
+
+=== s1 / N=2000 / qwen ===
+[  20/30] 1037.8s elapsed
+[  30/30] 1563.3s elapsed
+
+=== s2 / N=500 / noguard ===
+[  20/35]    6.1s elapsed
+[  35/35]   10.6s elapsed
+
+=== s2 / N=500 / qwen ===
+[  20/35]  811.8s elapsed
+[  35/35] 1562.4s elapsed
+
+=== s2 / N=1000 / noguard ===
+[  20/35]   11.9s elapsed
+[  35/35]   21.2s elapsed
+
+=== s2 / N=1000 / qwen ===
+[  20/35]  889.7s elapsed
+[  35/35] 1709.2s elapsed
+
+=== s2 / N=2000 / noguard ===
+[  20/35]   24.5s elapsed
+[  35/35]   43.6s elapsed
+
+=== s2 / N=2000 / qwen ===
+[  20/35]  978.7s elapsed
+[  35/35] 1812.9s elapsed
+
+=== s3 / N=500 / noguard ===
+[  20/25]    6.7s elapsed
+[  25/25]    8.7s elapsed
+
+=== s3 / N=500 / qwen ===
+[  20/25] 1043.7s elapsed
+[  25/25] 1301.4s elapsed
+
+=== s3 / N=1000 / noguard ===
+[  20/25]   13.2s elapsed
+[  25/25]   17.0s elapsed
+
+=== s3 / N=1000 / qwen ===
+[  20/25] 1055.9s elapsed
+[  25/25] 1321.7s elapsed
+
+=== s3 / N=2000 / noguard ===
+[  20/25]   27.0s elapsed
+[  25/25]   34.8s elapsed
+
+=== s3 / N=2000 / qwen ===
+[  20/25] 1059.7s elapsed
+[  25/25] 1328.9s elapsed
+
+=== s4 / N=500 / noguard ===
+[  20/45]    6.1s elapsed
+[  40/45]   11.9s elapsed
+[  45/45]   13.2s elapsed
+
+=== s4 / N=500 / qwen ===
+[  20/45]  847.8s elapsed
+[  40/45] 1700.5s elapsed
+[  45/45] 1912.0s elapsed
+
+=== s4 / N=1000 / noguard ===
+[  20/45]   12.4s elapsed
+[  40/45]   23.8s elapsed
+[  45/45]   26.4s elapsed
+
+=== s4 / N=1000 / qwen ===
+[  20/45]  851.9s elapsed
+[  40/45] 1705.7s elapsed
+[  45/45] 1918.9s elapsed
+
+=== s4 / N=2000 / noguard ===
+[  20/45]   24.6s elapsed
+[  40/45]   47.8s elapsed
+[  45/45]   53.2s elapsed
+
+=== s4 / N=2000 / qwen ===
+[  20/45]  869.7s elapsed
+[  40/45] 1734.2s elapsed
+[  45/45] 1950.6s elapsed
+
+Leaderboard written to /root/WolfBench/outputs/exp6_qwen
+   s1 noguard   N=500   score=   0.00  Δα_c=0.0
+   s1 qwen      N=500   score=  -7.10  Δα_c=0.0
+   s1 noguard   N=1000  score=   0.00  Δα_c=0.0
+   s1 qwen      N=1000  score= -10.28  Δα_c=0.0
+   s1 noguard   N=2000  score=   0.00  Δα_c=0.0
+   s1 qwen      N=2000  score= -11.08  Δα_c=0.0
+   s2 noguard   N=500   score=   0.00  Δα_c=0.0
+   s2 qwen      N=500   score=   3.52  Δα_c=None
+   s2 noguard   N=1000  score=   0.00  Δα_c=0.0
+   s2 qwen      N=1000  score=   5.26  Δα_c=0.00075
+   s2 noguard   N=2000  score=   0.00  Δα_c=0.0
+   s2 qwen      N=2000  score=  -5.78  Δα_c=0.00025
+   s3 noguard   N=500   score=   0.00  Δα_c=None
+   s3 qwen      N=500   score=  -7.89  Δα_c=None
+   s3 noguard   N=1000  score=   0.00  Δα_c=None
+   s3 qwen      N=1000  score=  -6.99  Δα_c=None
+   s3 noguard   N=2000  score=   0.00  Δα_c=0.0
+   s3 qwen      N=2000  score=  -7.60  Δα_c=0.0
+   s4 noguard   N=500   score=   0.00  Δα_c=0.0
+   s4 qwen      N=500   score= -23.06  Δα_c=-0.01
+   s4 noguard   N=1000  score=   0.00  Δα_c=0.0
+   s4 qwen      N=1000  score= -38.45  Δα_c=-0.13999999999999999
+   s4 noguard   N=2000  score=   0.00  Δα_c=0.0
+   s4 qwen      N=2000  score= -24.92  Δα_c=-0.019999999999999997
