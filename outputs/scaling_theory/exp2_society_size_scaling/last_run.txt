@@ -1,2 +1,2 @@
-summary_written at 2026-06-09T07:51:44Z
+summary_written at 2026-06-16T06:24:58Z
 output_dir=outputs/scaling_theory/exp2_society_size_scaling

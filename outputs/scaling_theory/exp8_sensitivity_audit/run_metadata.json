@@ -1,8 +1,8 @@
 {
   "output_dir": "outputs/scaling_theory/exp8_sensitivity_audit",
-  "last_event": "summary_written",
-  "last_event_at_utc": "2026-06-09T11:47:57Z",
-  "started_at_utc": "2026-06-09T10:10:11Z",
-  "status": "summary_written",
+  "last_event": "started",
+  "last_event_at_utc": "2026-06-16T07:58:22Z",
+  "started_at_utc": "2026-06-16T07:58:22Z",
+  "status": "running",
   "summary_written_at_utc": "2026-06-09T11:47:57Z"
 }

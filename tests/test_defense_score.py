@@ -1,7 +1,10 @@
 from experiments.defense_benchmark.exp6_defense_leaderboard import (
     _build_display_leaderboard,
 )
+import pytest
+
 from wolfbench.metrics import bootstrap_ci, defense_score
+from experiments.defense_benchmark.exp5_wolfguard_defense import summarize_threshold_shift
 
 
 def _row(alpha, collapse, loss, utility=0.0, fp=0.0, cost=0.0, day=-1):
@@ -75,3 +78,31 @@ def test_exp6_display_leaderboard_aggregates_scenarios_and_sorts():
     assert alpha["Avg DefenseScore"] == 33.75
     assert alpha["Avg ThresholdShift"] == 0.2
     assert alpha["Worst Score"] == 15.0
+
+
+def test_exp5_threshold_shift_summary_reports_alpha_c_delta():
+    rows = []
+    for alpha, no_collapse, def_collapse in [
+        (0.01, 0.0, 0.0),
+        (0.02, 1.0, 0.0),
+        (0.03, 1.0, 1.0),
+    ]:
+        base = _row(alpha, no_collapse, 0.01)
+        base.update({"scenario_id": "s1", "scenario": "s1", "n_society": 100, "defense": "noguard"})
+        defended = _row(alpha, def_collapse, 0.005, utility=0.1, cost=0.1)
+        defended.update({"scenario_id": "s1", "scenario": "s1", "n_society": 100, "defense": "rule"})
+        rows.extend([base, defended])
+
+    summary = summarize_threshold_shift(
+        rows,
+        defenses=["noguard", "rule"],
+        scenarios=["s1"],
+        n_grid=[100],
+        alpha_grids={"s1": [0.01, 0.02, 0.03]},
+    )
+
+    rule = next(row for row in summary if row["defense"] == "rule")
+    assert rule["alpha_c_no_def"] == 0.02
+    assert rule["alpha_c_def"] == 0.03
+    assert rule["threshold_shift"] == pytest.approx(0.01)
+    assert rule["delta_collapse"] > 0.0
