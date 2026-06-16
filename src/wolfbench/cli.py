@@ -9,8 +9,10 @@ import numpy as np
 import yaml
 
 from wolfbench.agents.wolfguard import WolfGuardAgent, WolfGuardConfig
+from wolfbench.data import export_trajectory_dataset, iter_jsonl
 from wolfbench.defense.isolation import SubprocessWolfGuardPolicy
 from wolfbench.defense import get_policy
+from wolfbench.defense.distilled import evaluate_distilled_model, train_distilled_model
 from wolfbench.env.environment import WolfBenchEnv
 from wolfbench.metrics import defense_score, threshold_shift
 from wolfbench.scenarios.base import load_scenario, SCENARIO_FILES
@@ -166,6 +168,7 @@ def scaling_track(scenario, alpha, n_society, seeds, defense, out):
 
 
 SPLITS_PATH = Path(__file__).parent / "config" / "splits.yaml"
+EVALUATION_SPLITS = ("public_dev", "public_test", "paper_final", "stress")
 
 
 def _load_splits() -> dict:
@@ -181,6 +184,32 @@ def _resolve_seeds(split: str | None, seeds_arg: str | None) -> list[int]:
     return list(splits[split]["seeds"])
 
 
+def _canonical_config() -> dict:
+    return _load_splits().get("canonical", {})
+
+
+def _resolve_scenarios(spec: str) -> list[str]:
+    if spec in {"all", "canonical"}:
+        return list(_canonical_config().get("scenarios", SCENARIO_FILES.keys()))
+    scenarios = [x.strip() for x in spec.split(",") if x.strip()]
+    unknown = [s for s in scenarios if s not in SCENARIO_FILES]
+    if unknown:
+        raise click.UsageError(f"Unknown scenario(s): {', '.join(unknown)}")
+    return scenarios
+
+
+def _resolve_alpha_grid(spec: str) -> list[float]:
+    if spec == "canonical":
+        return [float(a) for a in _canonical_config().get("alphas", [0.0, 0.02])]
+    return _parse_floats(spec)
+
+
+def _resolve_n_grid(spec: str) -> list[int]:
+    if spec == "canonical":
+        return [int(n) for n in _canonical_config().get("n_society", [1000])]
+    return _parse_ints(spec)
+
+
 def _import_policy(spec: str, **kwargs):
     """Load a user-supplied policy via 'pkg.mod:ClassName'."""
     import importlib
@@ -189,13 +218,16 @@ def _import_policy(spec: str, **kwargs):
     return getattr(mod, cls_name)(**kwargs)
 
 
-def _policy_kwargs(llm_model=None, llm_provider=None, llm_base_url=None, llm_api_key=None) -> dict:
-    return {
+def _policy_kwargs(llm_model=None, llm_provider=None, llm_base_url=None,
+                   llm_api_key=None, model_path=None) -> dict:
+    kwargs = {
         "model": llm_model,
         "provider": llm_provider,
         "base_url": llm_base_url,
         "api_key": llm_api_key,
+        "model_path": model_path,
     }
+    return {k: v for k, v in kwargs.items() if v is not None}
 
 
 def _make_policy(spec: str, kwargs: dict, isolated: bool):
@@ -230,13 +262,13 @@ def _run_one(scenario_id, n_society, alpha, seed, defense_spec, policy_kwargs=No
 
 @main.command("evaluate")
 @click.option("--defense", "defense_name", default="rule",
-              help="Defense baseline: noguard | random | rule | oracle | llm "
+            help="Defense baseline: noguard | random | rule | oracle | distilled | llm "
                    "or a dotted spec 'pkg.mod:ClassName'.")
 @click.option("--scenario", default="s1", type=click.Choice(list(SCENARIO_FILES)))
 @click.option("--alphas", default="0,0.005,0.01,0.02,0.05,0.1", type=str)
 @click.option("--n-society", "n_society", default=1000, type=int)
 @click.option("--split", default="public_dev",
-              type=click.Choice(["public_dev", "public_test"]))
+              type=click.Choice(EVALUATION_SPLITS))
 @click.option("--seeds", default=None,
               help="Comma-separated seeds, overrides --split.")
 @click.option("--llm-model", default=None,
@@ -248,16 +280,19 @@ def _run_one(scenario_id, n_society, alpha, seed, defense_spec, policy_kwargs=No
                   help="OpenAI-compatible base URL, e.g. http://127.0.0.1:8000/v1.")
 @click.option("--llm-api-key", default=None,
                   help="API key for the OpenAI-compatible endpoint; vLLM accepts EMPTY.")
+@click.option("--model-path", default=None, type=click.Path(),
+              help="Model artifact path for --defense=distilled.")
 @click.option("--out", type=click.Path(), default=None)
 @click.option("--isolate/--no-isolate", default=True,
               help="Run defense policy in a spawned subprocess JSON RPC sandbox.")
 def evaluate_cmd(defense_name, scenario, alphas, n_society, split, seeds,
-                      llm_model, llm_provider, llm_base_url, llm_api_key, out,
+                      llm_model, llm_provider, llm_base_url, llm_api_key,
+                      model_path, out,
                       isolate):
     """Evaluate a defense submission. Reports DefenseScore + ThresholdShift."""
     alpha_grid = _parse_floats(alphas)
     seed_list = _resolve_seeds(split, seeds)
-    kwargs = _policy_kwargs(llm_model, llm_provider, llm_base_url, llm_api_key)
+    kwargs = _policy_kwargs(llm_model, llm_provider, llm_base_url, llm_api_key, model_path)
     if ":" in defense_name:
         display_name = defense_name
     else:
@@ -287,6 +322,81 @@ def evaluate_cmd(defense_name, scenario, alphas, n_society, split, seeds,
     click.echo(json.dumps(report, indent=2))
     if out:
         Path(out).write_text(json.dumps(report, indent=2))
+
+
+@main.command("protocol")
+def protocol_cmd():
+    """Print the public benchmark protocol and canonical grid."""
+    splits = _load_splits()
+    report = {
+        "splits": {name: splits[name] for name in EVALUATION_SPLITS if name in splits},
+        "canonical": splits.get("canonical", {}),
+        "hidden_seeds": "server-side only for future official leaderboard audits",
+    }
+    click.echo(json.dumps(report, indent=2))
+
+
+@main.command("export-trajectories")
+@click.option("--scenario", "scenario_spec", default="s1",
+              help="Comma-separated scenario ids, or 'canonical'/'all'.")
+@click.option("--alphas", default="0,0.02",
+              help="Comma-separated alpha grid, or 'canonical'.")
+@click.option("--n-society", "n_society", default="500",
+              help="Comma-separated N grid, or 'canonical'.")
+@click.option("--split", default="public_dev", type=click.Choice(EVALUATION_SPLITS))
+@click.option("--seeds", default=None,
+              help="Comma-separated seeds, overrides --split.")
+@click.option("--labels-policy", default="auto",
+              type=click.Choice(["auto", "include", "hide"]),
+              help="auto emits oracle/outcome labels only for training splits.")
+@click.option("--out", type=click.Path(), default=None)
+def export_trajectories_cmd(scenario_spec, alphas, n_society, split, seeds,
+                            labels_policy, out):
+    """Export public-observation trajectory JSONL for defense training."""
+    out = out or f"outputs/defense_benchmark/trajectory_dataset/{split}.jsonl"
+    metadata = export_trajectory_dataset(
+        out_path=out,
+        scenarios=_resolve_scenarios(scenario_spec),
+        alphas=_resolve_alpha_grid(alphas),
+        n_society_grid=_resolve_n_grid(n_society),
+        seeds=_resolve_seeds(split, seeds),
+        split=split,
+        labels_policy=labels_policy,
+    )
+    click.echo(json.dumps(metadata, indent=2))
+
+
+@main.command("train-distilled")
+@click.option("--dataset", type=click.Path(exists=True), required=True,
+              help="Labeled public-dev trajectory JSONL.")
+@click.option("--dev-dataset", type=click.Path(exists=True), default=None,
+              help="Optional labeled trajectory JSONL for offline validation.")
+@click.option("--out", type=click.Path(),
+              default="outputs/defense_benchmark/distilled_wolfguard/model.json")
+@click.option("--epochs", default=300, type=int)
+@click.option("--lr", default=0.1, type=float)
+@click.option("--l2", default=1e-4, type=float)
+@click.option("--seed", default=0, type=int)
+@click.option("--class-balance/--no-class-balance", default=True)
+def train_distilled_cmd(dataset, dev_dataset, out, epochs, lr, l2, seed, class_balance):
+    """Train the simulator-trained Distilled-WolfGuard baseline."""
+    records = list(iter_jsonl(dataset))
+    model = train_distilled_model(
+        records,
+        epochs=epochs,
+        lr=lr,
+        l2=l2,
+        seed=seed,
+        class_balance=class_balance,
+    )
+    model.save(out)
+    report = {
+        "model_path": out,
+        "train": model.metadata,
+    }
+    if dev_dataset:
+        report["dev"] = evaluate_distilled_model(model, iter_jsonl(dev_dataset))
+    click.echo(json.dumps(report, indent=2))
 
 
 def _summarise(res) -> dict:

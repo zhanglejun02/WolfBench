@@ -46,6 +46,12 @@ populations.
 * **Closed-loop evaluation.** Defenses receive a compressed daily observation
   and must choose interventions that propagate through retail behavior, the
   market, and the social graph — not labels in a static dataset.
+* **Trainable trajectory dataset.** WolfBench can export JSONL trajectories
+  containing the public daily observation a defender sees, plus train-split-only
+  oracle labels and future collapse outcomes for learning defense models.
+* **Simulator-trained baseline.** `Distilled-WolfGuard` is an open, reproducible
+  softmax classifier trained from those trajectories, giving the benchmark a
+  stronger learnable baseline than random/rule-only checks.
 * **Reproducible.** Canonical seeds, scenarios, attacker populations and
   evaluation grids live in [`config/splits.yaml`](src/wolfbench/config/splits.yaml).
   Public-dev / public-test splits are published; hidden and stress seeds are
@@ -196,10 +202,54 @@ wolfbench evaluate --defense my_pkg.policies:MyDefense --split public_test
 | `noguard` | `NoGuardPolicy` | reference; never intervenes |
 | `random` | `RandomGuardPolicy` | sanity check |
 | `rule` | `RuleWolfGuardPolicy` | z-score detector (canonical baseline to beat) |
+| `distilled` | `DistilledWolfGuardPolicy` | simulator-trained classifier baseline |
 | `oracle` | `OracleWolfGuardPolicy` | non-eligible upper bound; receives private ground-truth pressure |
 | `llm` | `LLMWolfGuardPolicy` | OpenAI-compatible LLM defender |
 | `qwen` | `Qwen3-vLLM-WolfGuard` | local vLLM / Qwen3 from-scratch baseline |
 | `qwen_assisted` | `Qwen3-vLLM-assisted` | local vLLM / Qwen3 reranking the rule baseline |
+
+### Trajectory dataset + Distilled-WolfGuard
+
+WolfBench is not only a simulator: it also exports a reproducible defense
+training dataset. Each JSONL row is one `(episode, day, asset)` sample with the
+public `WolfGuardPolicy` observation. `oracle_label`, `future_collapse`,
+`future_max_score`, and `collapse_components` are emitted by default only for
+`public_dev`; held-out splits keep those fields null unless a maintainer
+explicitly opts in.
+
+Inspect the official split protocol:
+
+```bash
+wolfbench protocol
+```
+
+Export a labeled training split and train the open simulator-trained baseline:
+
+```bash
+wolfbench export-trajectories \
+  --scenario s1 --alphas 0,0.02 --n-society 500 --split public_dev \
+  --out outputs/defense_benchmark/trajectory_dataset/public_dev.jsonl
+
+wolfbench train-distilled \
+  --dataset outputs/defense_benchmark/trajectory_dataset/public_dev.jsonl \
+  --out outputs/defense_benchmark/distilled_wolfguard/model.json
+```
+
+Evaluate it through the same leaderboard harness as any other defense:
+
+```bash
+wolfbench evaluate --defense distilled \
+  --model-path outputs/defense_benchmark/distilled_wolfguard/model.json \
+  --scenario s1 --split public_test
+```
+
+For Exp6, train the model first and then add it to the eligible defense list:
+
+```bash
+WOLFBENCH_EXP6_DEFENSES=noguard,random,rule,distilled \
+WOLFBENCH_DISTILLED_MODEL=outputs/defense_benchmark/distilled_wolfguard/model.json \
+python -m experiments.defense_benchmark.exp6_defense_leaderboard
+```
 
 ### Local vLLM / Qwen baseline
 
@@ -451,6 +501,7 @@ Defense tracks used by Exp6:
 |---|---|
 | `oracle_upper_bound` | `oracle` |
 | `rule_baseline` | `rule` |
+| `simulator_trained_baseline` | `distilled` |
 | `llm_from_scratch` | `llm`, `qwen` |
 | `llm_assisted_rule` | `llm_assisted`, `qwen_assisted` |
 | `control` | `noguard`, `random` |

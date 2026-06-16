@@ -107,7 +107,8 @@ class WolfBenchEnv:
                  llm_backend=None,
                  n_llm_leaders: int = 0,
                  expose_oracle: bool = False,
-                 evaluator_config: EvaluatorConfig | None = None):
+                 evaluator_config: EvaluatorConfig | None = None,
+                 record_trajectory: bool = False):
         self.scenario = scenario
         self.n_society = n_society
         self.alpha = alpha
@@ -141,6 +142,7 @@ class WolfBenchEnv:
         self.social = SocialEnv(self.graph, scenario, np.random.default_rng(seed + 23))
         self.wolfguard = wolfguard
         self.expose_oracle = bool(expose_oracle)
+        self.record_trajectory = bool(record_trajectory)
         cfg = evaluator_config or EvaluatorConfig()
         self.evaluator_config = EvaluatorConfig(
             err_trade_exposure_threshold=_nonnegative_finite(
@@ -213,8 +215,16 @@ class WolfBenchEnv:
 
             # --- WolfGuard chooses interventions BEFORE retail trades ---
             actions: dict[str, dict] = {}
+            public_summary: dict[str, Any] | None = None
+            oracle_actions: dict[str, dict] = {}
+            if self.record_trajectory or self.wolfguard is not None:
+                public_summary = self._system_summary(day, recent_ret, include_oracle=False)
+            if self.record_trajectory:
+                oracle_actions = self._oracle_label_actions(day, public_summary or {})
             if self.wolfguard is not None:
-                summary = self._system_summary(day, recent_ret)
+                summary = public_summary or self._system_summary(day, recent_ret, include_oracle=False)
+                if self.expose_oracle:
+                    summary = self._system_summary(day, recent_ret, include_oracle=True)
                 actions = validate_interventions(
                     self.wolfguard.decide(day, summary),
                     set(self.market.assets),
@@ -264,14 +274,18 @@ class WolfBenchEnv:
                 metrics.collapse_day = day
                 metrics.collapse_rate = 1.0
 
-            daily_log.append({
+            entry = {
                 "day": day,
                 "prices": {a: float(s.price) for a, s in self.market.assets.items()},
                 "fundamentals": {a: float(s.fundamental) for a, s in self.market.assets.items()},
                 "components": comp,
                 "collapse_score": score,
                 "wolfguard_actions": actions,
-            })
+            }
+            if self.record_trajectory:
+                entry["observation"] = public_summary or self._system_summary(day, recent_ret, include_oracle=False)
+                entry["oracle_actions"] = oracle_actions
+            daily_log.append(entry)
 
         # finalise metrics
         retail_wealth_now = sum(a.portfolio.mark_to_market(prices) for a in self.society.retail)
@@ -343,7 +357,8 @@ class WolfBenchEnv:
                 seller.portfolio.cash += t.quantity * t.price
                 seller.portfolio.holdings[t.asset] = seller.portfolio.holdings.get(t.asset, 0.0) - t.quantity
 
-    def _system_summary(self, day, recent_ret) -> dict[str, Any]:
+    def _system_summary(self, day, recent_ret,
+                        include_oracle: bool | None = None) -> dict[str, Any]:
         market_view = self.market.snapshot()
         social_view = {a: self.social.asset_signal(a) for a in self.market.assets}
         summary = {
@@ -352,9 +367,22 @@ class WolfBenchEnv:
             "social": social_view,
             "recent_return": recent_ret,
         }
-        if self.expose_oracle:
+        should_include_oracle = self.expose_oracle if include_oracle is None else include_oracle
+        if should_include_oracle:
             summary["oracle_view"] = self._oracle_view(day)
         return summary
+
+    def _oracle_label_actions(self, day: int,
+                              public_summary: dict[str, Any]) -> dict[str, dict]:
+        """Return internal oracle labels without exposing them to a policy."""
+        from wolfbench.defense.baselines import OracleWolfGuardPolicy
+
+        summary = dict(public_summary)
+        summary["oracle_view"] = self._oracle_view(day)
+        return validate_interventions(
+            OracleWolfGuardPolicy().decide(day, summary),
+            set(self.market.assets),
+        )
 
     def _oracle_view(self, day: int) -> dict[str, dict[str, float]]:
         """Ground-truth per-asset harmful pressure. Used only by the Oracle

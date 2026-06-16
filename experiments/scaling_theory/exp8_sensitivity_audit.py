@@ -39,6 +39,35 @@ DEFAULT_ALPHAS = {
     "s3": 0.35,
     "s4": 0.03,
 }
+FAMILY_LABELS = {
+    "feedback_strength": "Feedback",
+    "asset_liquidity_scale": "Liquidity",
+    "retail_wealth_scale": "Retail wealth",
+    "retail_risk_appetite": "Risk appetite",
+    "social_mean_degree": "Mean degree",
+    "placement": "Placement",
+}
+CATEGORY_ORDER = {
+    "placement": {"random": 0, "high_degree": 1},
+}
+
+
+def _row_float(row: dict, key: str, default: float = 0.0) -> float:
+    value = row.get(key, default)
+    if value in {None, "", "None", "none", "null", "nan"}:
+        return default
+    return float(value)
+
+
+def _sort_value(value, family: str | None = None):
+    if family in CATEGORY_ORDER:
+        order = CATEGORY_ORDER[family]
+        if str(value) in order:
+            return (0, order[str(value)])
+    try:
+        return (0, float(value))
+    except (TypeError, ValueError):
+        return (1, str(value))
 
 
 def _alpha_for(scenario: str) -> float:
@@ -71,6 +100,148 @@ def _parameter_grid() -> dict[str, list[float | int | str]]:
         "social_mean_degree": env_int_list("WOLFBENCH_EXP8_MEAN_DEGREES", "4,8,12,16"),
         "placement": env_list("WOLFBENCH_EXP8_PLACEMENTS", "random,high_degree"),
     }
+
+
+def _family_delta_rows(summary_rows: list[dict],
+                       scenarios: list[str] | None = None,
+                       families: list[str] | None = None) -> list[dict]:
+    scenarios = scenarios or sorted({str(r["scenario"]) for r in summary_rows})
+    families = families or [f for f in FAMILY_LABELS if any(r["family"] == f for r in summary_rows)]
+    out = []
+    for scenario in scenarios:
+        for family in families:
+            rows = [r for r in summary_rows if r["scenario"] == scenario and r["family"] == family]
+            if not rows:
+                continue
+            values = [_row_float(r, "collapse_rate_mean") for r in rows]
+            min_idx = int(np.argmin(values))
+            max_idx = int(np.argmax(values))
+            out.append({
+                "scenario": scenario,
+                "family": family,
+                "min_collapse_rate": values[min_idx],
+                "max_collapse_rate": values[max_idx],
+                "delta_collapse_rate": float(values[max_idx] - values[min_idx]),
+                "value_at_min": rows[min_idx]["value"],
+                "value_at_max": rows[max_idx]["value"],
+                "n_values": len(rows),
+            })
+    return out
+
+
+def _plot_sensitivity_heatmap(delta_rows: list[dict],
+                              scenarios: list[str],
+                              families: list[str],
+                              out) -> None:
+    matrix = np.full((len(scenarios), len(families)), np.nan)
+    by_key = {(r["scenario"], r["family"]): r for r in delta_rows}
+    for i, scenario in enumerate(scenarios):
+        for j, family in enumerate(families):
+            row = by_key.get((scenario, family))
+            if row is not None:
+                matrix[i, j] = _row_float(row, "delta_collapse_rate")
+
+    fig, ax = plt.subplots(figsize=(10, 4.8))
+    im = ax.imshow(matrix, cmap="viridis", vmin=0.0, vmax=max(1.0, float(np.nanmax(matrix))))
+    ax.set_xticks(np.arange(len(families)))
+    ax.set_xticklabels([FAMILY_LABELS.get(f, f) for f in families], rotation=25, ha="right")
+    ax.set_yticks(np.arange(len(scenarios)))
+    ax.set_yticklabels([s.upper() for s in scenarios])
+    ax.set_title("Exp8 sensitivity audit: collapse-rate range by parameter family")
+    ax.set_xlabel("Parameter family")
+    ax.set_ylabel("Scenario")
+    for i in range(len(scenarios)):
+        for j in range(len(families)):
+            value = matrix[i, j]
+            if np.isfinite(value):
+                color = "white" if value >= 0.45 else "black"
+                ax.text(j, i, f"{value:.2f}", ha="center", va="center", color=color, fontsize=9)
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("max P(collapse) - min P(collapse)")
+    fig.tight_layout()
+    fig.savefig(out / "sensitivity_delta_heatmap.png", dpi=180)
+    plt.close(fig)
+
+
+def _plot_top_sensitivity_curves(summary_rows: list[dict],
+                                 delta_rows: list[dict],
+                                 out,
+                                 top_k: int = 8) -> None:
+    ranked = sorted(delta_rows, key=lambda r: _row_float(r, "delta_collapse_rate"), reverse=True)
+    selected = [r for r in ranked if _row_float(r, "delta_collapse_rate") > 0.0][:top_k]
+    if not selected:
+        return
+
+    n_cols = 2
+    n_rows = int(np.ceil(len(selected) / n_cols))
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(11, 3.1 * n_rows), squeeze=False)
+    for ax, row in zip(axes.ravel(), selected):
+        scenario = row["scenario"]
+        family = row["family"]
+        plot_rows = [
+            r for r in summary_rows
+            if r["scenario"] == scenario and r["family"] == family
+        ]
+        plot_rows.sort(key=lambda r: _sort_value(r["value"], family))
+        xs = np.arange(len(plot_rows))
+        ys = np.array([_row_float(r, "collapse_rate_mean") for r in plot_rows], dtype=float)
+        yerr = np.array([
+            [max(0.0, y - _row_float(r, "collapse_rate_ci_low")) for y, r in zip(ys, plot_rows)],
+            [max(0.0, _row_float(r, "collapse_rate_ci_high") - y) for y, r in zip(ys, plot_rows)],
+        ])
+        ax.errorbar(xs, ys, yerr=yerr, marker="o", capsize=3, lw=1.6)
+        ax.set_xticks(xs)
+        ax.set_xticklabels([str(r["value"]) for r in plot_rows], rotation=20, ha="right")
+        ax.set_ylim(-0.05, 1.05)
+        ax.grid(alpha=0.25)
+        ax.set_title(
+            f"{scenario.upper()} / {FAMILY_LABELS.get(family, family)} "
+            f"(delta={_row_float(row, 'delta_collapse_rate'):.2f})"
+        )
+        ax.set_ylabel("P(collapse)")
+    for ax in axes.ravel()[len(selected):]:
+        ax.axis("off")
+    fig.suptitle("Exp8 strongest one-at-a-time sensitivities", y=1.0)
+    fig.tight_layout()
+    fig.savefig(out / "top_sensitivity_curves.png", dpi=180, bbox_inches="tight")
+    plt.close(fig)
+
+
+def _plot_feedback_sensitivity(summary_rows: list[dict], scenarios: list[str], out) -> None:
+    fig, axes = plt.subplots(len(scenarios), 1, figsize=(9, 3.2 * len(scenarios)), sharex=False)
+    if len(scenarios) == 1:
+        axes = [axes]
+    for ax, scenario in zip(axes, scenarios):
+        plot_rows = [r for r in summary_rows if r["scenario"] == scenario and r["family"] == "feedback_strength"]
+        plot_rows.sort(key=lambda r: _sort_value(r["value"], "feedback_strength"))
+        xs = [_row_float(r, "value") for r in plot_rows]
+        ys = [_row_float(r, "collapse_rate_mean") for r in plot_rows]
+        yerr = [
+            [max(0.0, y - _row_float(r, "collapse_rate_ci_low")) for y, r in zip(ys, plot_rows)],
+            [max(0.0, _row_float(r, "collapse_rate_ci_high") - y) for y, r in zip(ys, plot_rows)],
+        ]
+        ax.errorbar(xs, ys, yerr=yerr, marker="o", capsize=4)
+        ax.set_title(f"{scenario.upper()} feedback sensitivity")
+        ax.set_ylabel("P(collapse)")
+        ax.set_ylim(-0.05, 1.05)
+        ax.grid(alpha=0.3)
+    axes[-1].set_xlabel("social.feedback_strength")
+    fig.tight_layout()
+    fig.savefig(out / "feedback_sensitivity.png", dpi=150)
+    plt.close(fig)
+
+
+def write_sensitivity_figures(summary_rows: list[dict], out,
+                              scenarios: list[str] | None = None,
+                              families: list[str] | None = None) -> list[dict]:
+    scenarios = scenarios or [s for s in SCENARIOS if any(r["scenario"] == s for r in summary_rows)]
+    families = families or [f for f in FAMILY_LABELS if any(r["family"] == f for r in summary_rows)]
+    delta_rows = _family_delta_rows(summary_rows, scenarios, families)
+    write_csv(delta_rows, out / "sensitivity_delta_summary.csv")
+    _plot_sensitivity_heatmap(delta_rows, scenarios, families, out)
+    _plot_top_sensitivity_curves(summary_rows, delta_rows, out)
+    _plot_feedback_sensitivity(summary_rows, scenarios, out)
+    return delta_rows
 
 
 def main() -> None:
@@ -115,26 +286,7 @@ def main() -> None:
                         row["collapse_successes"] = ci["successes"]
                 summary_rows.append(row)
     write_csv(summary_rows, out / "sensitivity_summary.csv")
-
-    fig, axes = plt.subplots(len(SCENARIOS), 1, figsize=(9, 3.2 * len(SCENARIOS)), sharex=False)
-    if len(SCENARIOS) == 1:
-        axes = [axes]
-    for ax, scenario in zip(axes, SCENARIOS):
-        plot_rows = [r for r in summary_rows if r["scenario"] == scenario and r["family"] == "feedback_strength"]
-        xs = [float(r["value"]) for r in plot_rows]
-        ys = [float(r["collapse_rate_mean"]) for r in plot_rows]
-        yerr = [
-            [max(0.0, y - float(r["collapse_rate_ci_low"])) for y, r in zip(ys, plot_rows)],
-            [max(0.0, float(r["collapse_rate_ci_high"]) - y) for y, r in zip(ys, plot_rows)],
-        ]
-        ax.errorbar(xs, ys, yerr=yerr, marker="o", capsize=4)
-        ax.set_title(f"{scenario.upper()} feedback sensitivity")
-        ax.set_ylabel("P(collapse)")
-        ax.grid(alpha=0.3)
-    axes[-1].set_xlabel("social.feedback_strength")
-    fig.tight_layout()
-    fig.savefig(out / "feedback_sensitivity.png", dpi=150)
-    plt.close(fig)
+    delta_rows = write_sensitivity_figures(summary_rows, out, SCENARIOS, list(grid.keys()))
 
     write_json({
         "scenarios": SCENARIOS,
@@ -143,6 +295,17 @@ def main() -> None:
         "seeds": SEEDS,
         "parameter_grid": grid,
         "summary_csv": "sensitivity_summary.csv",
+        "delta_summary_csv": "sensitivity_delta_summary.csv",
+        "figures": {
+            "sensitivity_delta_heatmap": "sensitivity_delta_heatmap.png",
+            "top_sensitivity_curves": "top_sensitivity_curves.png",
+            "feedback_sensitivity": "feedback_sensitivity.png",
+        },
+        "strongest_sensitivities": sorted(
+            delta_rows,
+            key=lambda r: _row_float(r, "delta_collapse_rate"),
+            reverse=True,
+        )[:8],
     }, out / "summary.json")
     print(f"Done. Wrote {out}")
 

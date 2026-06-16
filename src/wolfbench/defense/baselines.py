@@ -16,6 +16,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from wolfbench.agents.wolfguard import WolfGuardAgent, WolfGuardConfig
+from wolfbench.defense.distilled import DistilledWolfGuardPolicy
 from wolfbench.defense.policy import make_intervention
 
 
@@ -169,6 +170,7 @@ TRACKS = {
     "qwen": "llm_from_scratch",
     "llm_assisted": "llm_assisted_rule",
     "qwen_assisted": "llm_assisted_rule",
+    "distilled": "simulator_trained_baseline",
 }
 
 
@@ -182,18 +184,21 @@ BASELINES = {
     "random": RandomGuardPolicy,
     "rule": RuleWolfGuardPolicy,
     "oracle": OracleWolfGuardPolicy,
+    "distilled": DistilledWolfGuardPolicy,
 }
 
 
 def get_policy(name: str, **kwargs):
     """Instantiate a baseline by short name.
 
-    ``name`` ∈ ``{noguard, random, rule, oracle, llm, qwen, llm_assisted,
-    qwen_assisted}``. ``llm`` accepts
+    ``name`` ∈ ``{noguard, random, rule, oracle, distilled, llm, qwen,
+    llm_assisted, qwen_assisted}``. ``llm`` accepts
     a ``model`` kwarg (defaults to the deterministic rule fallback). ``qwen``
-    uses the local vLLM OpenAI-compatible endpoint by default.
+    uses the local vLLM OpenAI-compatible endpoint by default. ``distilled``
+    accepts ``model_path`` or reads ``WOLFBENCH_DISTILLED_MODEL``.
     """
     key = name.lower()
+    kwargs = {k: v for k, v in kwargs.items() if v is not None}
     if key in {"llm", "llm_assisted"}:
         return _llm_policy_factory(
             model=kwargs.get("model"),
@@ -221,4 +226,6 @@ def get_policy(name: str, **kwargs):
             f"Unknown defense baseline '{name}'. "
             f"Available: {sorted(BASELINES) + ['llm', 'qwen', 'llm_assisted', 'qwen_assisted']}"
         )
+    if key != "distilled":
+        kwargs.pop("model_path", None)
     return BASELINES[key](**kwargs)
