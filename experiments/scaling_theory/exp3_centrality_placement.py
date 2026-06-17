@@ -8,6 +8,8 @@ Output: outputs/scaling_theory/exp3_centrality_placement/
 """
 from __future__ import annotations
 
+import os
+
 import matplotlib
 
 matplotlib.use("Agg")
@@ -15,15 +17,24 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from experiments._common import (
-    RunSpec, aggregate, run_grid, scaling_exp_dir, write_csv, write_json,
+    RunSpec,
+    aggregate,
+    env_float_list,
+    env_int_list,
+    env_list,
+    env_seed_list,
+    run_grid,
+    scaling_exp_dir,
+    write_csv,
+    write_json,
 )
 
 
 SCENARIO = "s2"
-ALPHA = 0.003
-N_GRID = [500, 2000]
-PLACEMENTS = ["random", "high_degree"]
-SEEDS = list(range(1, 21))
+ALPHA = float(os.getenv("WOLFBENCH_EXP3_ALPHA", "0.003"))
+N_GRID = env_int_list("WOLFBENCH_EXP3_N_GRID", "500,2000")
+PLACEMENTS = env_list("WOLFBENCH_EXP3_PLACEMENTS", "random,high_degree")
+SEEDS = env_seed_list("WOLFBENCH_EXP3_SEEDS", default_count=20)
 
 
 def main():

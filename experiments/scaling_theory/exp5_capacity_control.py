@@ -11,23 +11,36 @@ Output: outputs/scaling_theory/exp5_capacity_control/
 """
 from __future__ import annotations
 
+import os
+
 import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from experiments._common import RunSpec, aggregate, run_grid, scaling_exp_dir, write_csv, write_json
+from experiments._common import (
+    RunSpec,
+    aggregate,
+    env_float_list,
+    env_int_list,
+    env_list,
+    env_seed_list,
+    run_grid,
+    scaling_exp_dir,
+    write_csv,
+    write_json,
+)
 from experiments.scaling_theory._threshold import bootstrap_logistic_ci, fit_logistic_threshold, linear_alpha_c
 
 
 SCENARIO = "s1"
-BASE_N = 1000
-N_GRID = [200, 1000, 5000]
-ALPHAS = [0.005, 0.0075, 0.01, 0.0125, 0.015, 0.0175, 0.02, 0.0225, 0.025, 0.03]
-SEEDS = list(range(1, 21))
-CAPACITY_MODES = ["per_agent_capacity", "fixed_total_capacity"]
-CI_BOOT = 500
+BASE_N = int(os.getenv("WOLFBENCH_EXP5_CAPACITY_BASE_N", "1000"))
+N_GRID = env_int_list("WOLFBENCH_EXP5_CAPACITY_N_GRID", "200,1000,5000")
+ALPHAS = env_float_list("WOLFBENCH_EXP5_CAPACITY_ALPHAS", "0.005,0.0075,0.01,0.0125,0.015,0.0175,0.02,0.0225,0.025,0.03")
+SEEDS = env_seed_list("WOLFBENCH_EXP5_CAPACITY_SEEDS", default_count=20)
+CAPACITY_MODES = env_list("WOLFBENCH_EXP5_CAPACITY_MODES", "per_agent_capacity,fixed_total_capacity")
+CI_BOOT = int(os.getenv("WOLFBENCH_EXP5_CAPACITY_CI_BOOT", "500"))
 
 
 def _spec(scenario: str, mode: str, n_society: int, alpha: float, seed: int) -> RunSpec:

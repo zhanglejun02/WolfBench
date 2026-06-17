@@ -403,6 +403,37 @@ Run all shipped non-LLM experiments across both tracks:
 python -m experiments.run_all
 ```
 
+Regenerate paper-ready figures from completed outputs without rerunning any
+episodes:
+
+```bash
+python -m experiments.paper_figures
+```
+
+The consolidated figures are written to `outputs/paper_figures/` as both PNG
+and PDF files, with `figure_manifest.md` documenting which experiments feed each
+figure. If the Qwen leaderboard is still running, rerun the command after it
+finishes to add the Qwen supplement.
+
+If the summary figures look visually sparse, refresh the most compressed
+evidence after any active LLM run finishes. These commands add denser N grids to
+the scaling and mechanism checks while preserving the default protocols:
+
+```bash
+WOLFBENCH_EXP2_N_GRID=100,150,200,300,500,750,1000,1500,2000,3000,5000 \
+  python -m experiments.scaling_theory.exp2_society_size_scaling
+
+WOLFBENCH_EXP3_N_GRID=500,1000,2000,5000 \
+  WOLFBENCH_EXP3_SEEDS=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 \
+  python -m experiments.scaling_theory.exp3_centrality_placement
+
+WOLFBENCH_EXP5_CAPACITY_N_GRID=200,500,1000,2000,5000 \
+  WOLFBENCH_EXP5_CAPACITY_SEEDS=1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30 \
+  python -m experiments.scaling_theory.exp5_capacity_control
+
+python -m experiments.paper_figures
+```
+
 ### Defense Benchmark Track
 
 These scripts write to `outputs/defense_benchmark/` and are for evaluating

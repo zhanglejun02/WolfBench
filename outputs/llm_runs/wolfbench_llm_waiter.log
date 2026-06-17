@@ -1,0 +1,215 @@
+[2026-06-16T18:52:40+08:00] wolfbench_all finished; starting LLM/Qwen runs
+[2026-06-16T18:52:40+08:00] starting vLLM qwen3-8b server in tmux session wolfbench_vllm
+[2026-06-16T18:52:40+08:00] waiting for vLLM /v1/models endpoint...
+[2026-06-16T18:54:00+08:00] vLLM is ready
+[2026-06-16T18:54:00+08:00] running LLM N=200 scaling experiment
+Running 300 LLM episodes for exp6 (scenario=s1, N=200, k_llm=1, model=qwen3-8b)...
+[  10/300]    1.2s elapsed
+[  20/300]    2.4s elapsed
+[  30/300]    3.6s elapsed
+[  40/300]    4.8s elapsed
+[  50/300]  151.8s elapsed
+[  60/300]  296.9s elapsed
+[  70/300]  441.9s elapsed
+[  80/300]  587.3s elapsed
+[  90/300]  731.5s elapsed
+[ 100/300]  875.8s elapsed
+[ 110/300] 1019.6s elapsed
+[ 120/300] 1162.4s elapsed
+[ 130/300] 1305.3s elapsed
+[ 140/300] 1449.9s elapsed
+[ 150/300] 1593.5s elapsed
+[ 160/300] 1739.0s elapsed
+[ 170/300] 1881.4s elapsed
+[ 180/300] 2022.2s elapsed
+[ 190/300] 2166.2s elapsed
+[ 200/300] 2310.2s elapsed
+[ 210/300] 2454.5s elapsed
+[ 220/300] 2595.9s elapsed
+[ 230/300] 2739.2s elapsed
+[ 240/300] 2884.4s elapsed
+[ 250/300] 3029.8s elapsed
+[ 260/300] 3172.9s elapsed
+[ 270/300] 3317.3s elapsed
+[ 280/300] 3460.1s elapsed
+[ 290/300] 3604.1s elapsed
+[ 300/300] 3748.3s elapsed
+Done. Wrote /root/WolfBench/outputs/scaling_theory/exp6_llm_n200_scaling
+LLM backend calls=7800 failures=0
+[2026-06-16T19:56:31+08:00] running Qwen defense leaderboard; overwriting outputs/defense_benchmark/exp6_qwen
+/root/miniconda3/lib/python3.10/site-packages/numpy/core/_methods.py:269: RuntimeWarning: Degrees of freedom <= 0 for slice
+  ret = _var(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/root/miniconda3/lib/python3.10/site-packages/numpy/core/_methods.py:226: RuntimeWarning: invalid value encountered in divide
+  arrmean = um.true_divide(arrmean, div, out=arrmean,
+/root/miniconda3/lib/python3.10/site-packages/numpy/core/_methods.py:261: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+
+=== s1 / N=1000 / noguard ===
+[  20/180]   11.6s elapsed
+[  40/180]   23.4s elapsed
+[  60/180]   35.2s elapsed
+[  80/180]   47.2s elapsed
+[ 100/180]   59.1s elapsed
+[ 120/180]   71.0s elapsed
+[ 140/180]   83.1s elapsed
+[ 160/180]   95.3s elapsed
+[ 180/180]  107.5s elapsed
+
+=== s1 / N=1000 / qwen ===
+[  20/180]  825.3s elapsed
+[  40/180] 1798.7s elapsed
+[  60/180] 2904.5s elapsed
+[  80/180] 4020.4s elapsed
+[ 100/180] 5130.7s elapsed
+[ 120/180] 6244.6s elapsed
+[ 140/180] 7370.4s elapsed
+[ 160/180] 8465.9s elapsed
+[ 180/180] 9517.8s elapsed
+
+=== s1 / N=1000 / qwen_assisted ===
+[  20/180] 1291.4s elapsed
+[  40/180] 2583.4s elapsed
+[  60/180] 3875.2s elapsed
+[  80/180] 5163.4s elapsed
+[ 100/180] 6452.2s elapsed
+[ 120/180] 7737.9s elapsed
+[ 140/180] 9021.9s elapsed
+[ 160/180] 10286.5s elapsed
+[ 180/180] 11526.0s elapsed
+
+=== s1 / N=1000 / oracle ===
+[  20/180]   12.3s elapsed
+[  40/180]   22.7s elapsed
+[  60/180]   31.6s elapsed
+[  80/180]   40.5s elapsed
+[ 100/180]   49.4s elapsed
+[ 120/180]   58.5s elapsed
+[ 140/180]   67.2s elapsed
+[ 160/180]   76.0s elapsed
+[ 180/180]   84.6s elapsed
+
+=== s2 / N=1000 / noguard ===
+[  20/210]   11.8s elapsed
+[  40/210]   23.4s elapsed
+[  60/210]   35.1s elapsed
+[  80/210]   46.7s elapsed
+[ 100/210]   58.6s elapsed
+[ 120/210]   70.6s elapsed
+[ 140/210]   82.7s elapsed
+[ 160/210]   95.2s elapsed
+[ 180/210]  107.8s elapsed
+[ 200/210]  120.5s elapsed
+[ 210/210]  126.7s elapsed
+
+=== s2 / N=1000 / qwen ===
+[  20/210]  823.2s elapsed
+[  40/210] 1646.5s elapsed
+[  60/210] 2470.1s elapsed
+[  80/210] 3291.7s elapsed
+[ 100/210] 4264.6s elapsed
+[ 120/210] 5373.1s elapsed
+[ 140/210] 6476.3s elapsed
+[ 160/210] 7591.0s elapsed
+[ 180/210] 8688.3s elapsed
+[ 200/210] 9785.2s elapsed
+[ 210/210] 10331.6s elapsed
+
+=== s2 / N=1000 / qwen_assisted ===
+[  20/210] 1290.0s elapsed
+[  40/210] 2581.3s elapsed
+[  60/210] 3872.3s elapsed
+[  80/210] 5163.9s elapsed
+[ 100/210] 6450.9s elapsed
+[ 120/210] 7732.5s elapsed
+[ 140/210] 9014.5s elapsed
+[ 160/210] 10300.7s elapsed
+[ 180/210] 11584.0s elapsed
+[ 200/210] 12869.8s elapsed
+[ 210/210] 13509.8s elapsed
+
+=== s2 / N=1000 / oracle ===
+[  20/210]   12.2s elapsed
+[  40/210]   24.1s elapsed
+[  60/210]   36.2s elapsed
+[  80/210]   48.2s elapsed
+[ 100/210]   60.6s elapsed
+[ 120/210]   73.1s elapsed
+[ 140/210]   85.6s elapsed
+[ 160/210]   98.3s elapsed
+[ 180/210]  111.3s elapsed
+[ 200/210]  124.3s elapsed
+[ 210/210]  130.7s elapsed
+
+=== s3 / N=1000 / noguard ===
+[  20/150]   11.8s elapsed
+[  40/150]   24.1s elapsed
+[  60/150]   37.0s elapsed
+[  80/150]   50.8s elapsed
+[ 100/150]   64.8s elapsed
+[ 120/150]   79.2s elapsed
+[ 140/150]   94.2s elapsed
+[ 150/150]  101.6s elapsed
+
+=== s3 / N=1000 / qwen ===
+[  20/150] 1015.1s elapsed
+[  40/150] 2034.3s elapsed
+[  60/150] 3045.7s elapsed
+[  80/150] 4068.0s elapsed
+[ 100/150] 5090.3s elapsed
+[ 120/150] 6107.7s elapsed
+[ 140/150] 7121.0s elapsed
+[ 150/150] 7625.1s elapsed
+
+=== s3 / N=1000 / qwen_assisted ===
+[  20/150] 1286.6s elapsed
+[  40/150] 2578.9s elapsed
+[  60/150] 3878.6s elapsed
+[  80/150] 5182.5s elapsed
+[ 100/150] 6487.1s elapsed
+[ 120/150] 7791.8s elapsed
+[ 140/150] 9090.8s elapsed
+[ 150/150] 9741.4s elapsed
+
+=== s3 / N=1000 / oracle ===
+[  20/150]   12.3s elapsed
+[  40/150]   22.4s elapsed
+[  60/150]   30.3s elapsed
+[  80/150]   37.1s elapsed
+[ 100/150]   43.4s elapsed
+[ 120/150]   49.5s elapsed
+[ 140/150]   54.7s elapsed
+[ 150/150]   57.3s elapsed
+
+=== s4 / N=1000 / noguard ===
+[  20/270]   12.3s elapsed
+[  40/270]   24.5s elapsed
+[  60/270]   36.6s elapsed
+[  80/270]   48.7s elapsed
+[ 100/270]   60.8s elapsed
+[ 120/270]   72.9s elapsed
+[ 140/270]   85.0s elapsed
+[ 160/270]   97.0s elapsed
+[ 180/270]  109.0s elapsed
+[ 200/270]  120.4s elapsed
+[ 220/270]  131.7s elapsed
+[ 240/270]  142.7s elapsed
+[ 260/270]  153.2s elapsed
+[ 270/270]  158.5s elapsed
+
+=== s4 / N=1000 / qwen ===
+[  20/270]  858.1s elapsed
+[  40/270] 1721.9s elapsed
+[  60/270] 2580.9s elapsed
+[  80/270] 3439.1s elapsed
+[ 100/270] 4301.7s elapsed
+[ 120/270] 5158.2s elapsed
+[ 140/270] 6013.7s elapsed
+[ 160/270] 6871.2s elapsed
+[ 180/270] 7725.5s elapsed
+[ 200/270] 8579.3s elapsed
+[ 220/270] 9436.7s elapsed
+[ 240/270] 10292.7s elapsed
+[ 260/270] 11153.0s elapsed
+[ 270/270] 11582.4s elapsed
+
+=== s4 / N=1000 / qwen_assisted ===
