@@ -2,7 +2,7 @@
 from wolfbench.agents.llm import (
     RuleFallbackBackend, LLMPumpLeader, LLMFinfluencer, LLMRuleAssistWolfGuardAgent,
     LLMWolfGuardAgent,
-    VLLMChatBackend, _loads_json_dict,
+    OpenRouterChatBackend, VLLMChatBackend, _loads_json_dict, make_chat_backend,
 )
 from wolfbench.agents.wolfguard import WolfGuardConfig
 from wolfbench.defense import get_policy, get_track
@@ -62,6 +62,21 @@ def test_vllm_backend_is_lazy_and_strict_by_default():
     assert backend.calls == 0
 
 
+def test_openrouter_backend_is_lazy_and_strict_by_default():
+    backend = OpenRouterChatBackend(model="anthropic/claude-3.5-haiku")
+    assert backend.name == "openrouter_chat"
+    assert backend.base_url == "https://openrouter.ai/api/v1"
+    assert backend.strict is True
+    assert backend.calls == 0
+
+
+def test_make_chat_backend_supports_openrouter():
+    backend = make_chat_backend(provider="openrouter", model="openai/gpt-4o-mini", api_key="test")
+    assert isinstance(backend, OpenRouterChatBackend)
+    assert backend.model == "openai/gpt-4o-mini"
+    assert backend.api_key == "test"
+
+
 def test_qwen_policy_factory_uses_vllm_without_calling_server():
     policy = get_policy("qwen", model="qwen3-8b",
                         base_url="http://127.0.0.1:9/v1")
@@ -74,8 +89,25 @@ def test_qwen_assisted_policy_factory_is_separate_track():
     policy = get_policy("qwen_assisted", model="qwen3-8b",
                         base_url="http://127.0.0.1:9/v1")
     assert isinstance(policy, LLMRuleAssistWolfGuardAgent)
-    assert get_track("qwen_assisted") == "llm_assisted_rule"
+    assert get_track("qwen_assisted") == "legacy_assisted_rule"
     assert get_track("qwen") == "llm_from_scratch"
+
+
+def test_llm_policy_factory_supports_openrouter_from_scratch():
+    policy = get_policy("llm", provider="openrouter", model="openai/gpt-4o-mini", api_key="test")
+    assert isinstance(policy, LLMWolfGuardAgent)
+    assert policy.backend.name == "openrouter_chat"
+    assert get_track("llm") == "llm_from_scratch"
+
+
+def test_llm_policy_factory_reads_provider_from_env(monkeypatch):
+    monkeypatch.setenv("WOLFBENCH_LLM_PROVIDER", "openrouter")
+    monkeypatch.setenv("WOLFBENCH_OPENROUTER_MODEL", "openai/gpt-4o-mini")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test")
+    policy = get_policy("llm")
+    assert isinstance(policy, LLMWolfGuardAgent)
+    assert policy.backend.name == "openrouter_chat"
+    assert policy.backend.model == "openai/gpt-4o-mini"
 
 
 def test_llm_json_parser_strips_qwen_thinking_and_fences():

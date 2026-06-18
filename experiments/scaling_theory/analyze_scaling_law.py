@@ -28,6 +28,7 @@ EXP2_DIR = SCALING_THEORY_OUTPUTS_ROOT / "exp2_society_size_scaling"
 EXP5_DIR = SCALING_THEORY_OUTPUTS_ROOT / "exp5_capacity_control"
 EXP7_DIR = SCALING_THEORY_OUTPUTS_ROOT / "exp7_cross_mechanism_threshold"
 EXP8_DIR = SCALING_THEORY_OUTPUTS_ROOT / "exp8_sensitivity_audit"
+STABLE_N_MIN = 500
 
 
 def _read_csv(path: Path) -> list[dict]:
@@ -86,6 +87,13 @@ def _fit_power(dataset: str, metric: str, x: np.ndarray, y: np.ndarray, note: st
         "alpha_inf": None,
         "r2": None,
         "log_r2": None,
+        "nu_ci_low": None,
+        "nu_ci_high": None,
+        "loo_nu_min": None,
+        "loo_nu_max": None,
+        "loo_nu_span": None,
+        "loo_log_r2_min": None,
+        "evidence_grade": None,
         "note": note,
     }
     if x.size < 2:
@@ -120,6 +128,13 @@ def _fit_finite_asymptote(dataset: str, metric: str, x: np.ndarray, y: np.ndarra
         "alpha_inf": None,
         "r2": None,
         "log_r2": None,
+        "nu_ci_low": None,
+        "nu_ci_high": None,
+        "loo_nu_min": None,
+        "loo_nu_max": None,
+        "loo_nu_span": None,
+        "loo_log_r2_min": None,
+        "evidence_grade": "diagnostic_only",
         "note": note,
     }
     if x.size < 4:
@@ -173,23 +188,119 @@ def _fmt(value, digits: int = 4) -> str:
     return f"{value:.{digits}g}"
 
 
+def _power_exponent(x: np.ndarray, y: np.ndarray) -> tuple[float, float, float, float] | None:
+    mask = np.isfinite(x) & np.isfinite(y) & (x > 0) & (y > 0)
+    x = x[mask]
+    y = y[mask]
+    if x.size < 2 or np.unique(x).size < 2:
+        return None
+    beta, log_amplitude = np.polyfit(np.log(x), np.log(y), 1)
+    amplitude = float(np.exp(log_amplitude))
+    pred = _power_pred(x, amplitude, float(beta))
+    return float(beta), float(-beta), _r2(y, pred), _log_r2(y, pred)
+
+
+def _bootstrap_nu_ci(x: np.ndarray, y: np.ndarray, seed: int, n_boot: int = 4000) -> tuple[float | None, float | None]:
+    mask = np.isfinite(x) & np.isfinite(y) & (x > 0) & (y > 0)
+    x = x[mask]
+    y = y[mask]
+    if x.size < 4:
+        return None, None
+    rng = np.random.default_rng(seed)
+    values = []
+    for _ in range(n_boot):
+        idx = rng.integers(0, x.size, size=x.size)
+        if np.unique(x[idx]).size < 2:
+            continue
+        fit = _power_exponent(x[idx], y[idx])
+        if fit is not None:
+            values.append(fit[1])
+    if len(values) < 50:
+        return None, None
+    low, high = np.percentile(values, [2.5, 97.5])
+    return float(low), float(high)
+
+
+def _leave_one_out_diagnostics(x: np.ndarray, y: np.ndarray) -> dict[str, float | None]:
+    mask = np.isfinite(x) & np.isfinite(y) & (x > 0) & (y > 0)
+    x = x[mask]
+    y = y[mask]
+    if x.size < 4:
+        return {
+            "loo_nu_min": None,
+            "loo_nu_max": None,
+            "loo_nu_span": None,
+            "loo_log_r2_min": None,
+        }
+    nu_values = []
+    log_r2_values = []
+    for leave_out in range(x.size):
+        keep = np.ones(x.size, dtype=bool)
+        keep[leave_out] = False
+        fit = _power_exponent(x[keep], y[keep])
+        if fit is None:
+            continue
+        _, nu, _, log_r2 = fit
+        nu_values.append(nu)
+        if log_r2 is not None:
+            log_r2_values.append(log_r2)
+    if not nu_values:
+        return {
+            "loo_nu_min": None,
+            "loo_nu_max": None,
+            "loo_nu_span": None,
+            "loo_log_r2_min": None,
+        }
+    return {
+        "loo_nu_min": float(np.min(nu_values)),
+        "loo_nu_max": float(np.max(nu_values)),
+        "loo_nu_span": float(np.max(nu_values) - np.min(nu_values)),
+        "loo_log_r2_min": float(np.min(log_r2_values)) if log_r2_values else None,
+    }
+
+
+def _evidence_grade(row: dict) -> str:
+    n_points = int(row.get("n_points") or 0)
+    log_r2 = _float(row.get("log_r2"), -1.0) or -1.0
+    loo_span = _float(row.get("loo_nu_span"), None)
+    ci_low = _float(row.get("nu_ci_low"), None)
+    ci_high = _float(row.get("nu_ci_high"), None)
+    ci_width = None if ci_low is None or ci_high is None else ci_high - ci_low
+    if n_points >= 10 and log_r2 >= 0.7 and loo_span is not None and loo_span <= 0.12 and ci_width is not None and ci_width <= 0.25:
+        return "law_candidate"
+    if n_points >= 6 and log_r2 >= 0.45:
+        return "finite_size_trend"
+    return "diagnostic_only"
+
+
+def _enrich_power_fit(row: dict, x: np.ndarray, y: np.ndarray, seed: int) -> dict:
+    if row.get("model") != "power" or row.get("amplitude") is None:
+        return row
+    ci_low, ci_high = _bootstrap_nu_ci(x, y, seed=seed)
+    row["nu_ci_low"] = ci_low
+    row["nu_ci_high"] = ci_high
+    row.update(_leave_one_out_diagnostics(x, y))
+    row["evidence_grade"] = _evidence_grade(row)
+    return row
+
+
 def _fit_rows(exp2_rows: list[dict], exp5_rows: list[dict], exp7_rows: list[dict]) -> list[dict]:
     fits = []
     n_exp2, ac_exp2 = _xy(exp2_rows, "alpha_c_logistic")
     _, width_exp2 = _xy(exp2_rows, "transition_width_10_90")
-    fits.append(_fit_power("exp2_s1", "alpha_c", n_exp2, ac_exp2, "primary S1 scaling"))
+    fits.append(_enrich_power_fit(_fit_power("exp2_s1", "alpha_c", n_exp2, ac_exp2, "primary S1 scaling"), n_exp2, ac_exp2, 21_001))
     fits.append(_fit_finite_asymptote("exp2_s1", "alpha_c", n_exp2, ac_exp2,
-                                      "descriptive finite-size model; six N points"))
-    fits.append(_fit_power("exp2_s1", "transition_width_10_90", n_exp2, width_exp2,
-                           "finite-size transition sharpening"))
+                                      "diagnostic finite-size asymptote model; use only if alpha_inf is identifiable"))
+    fits.append(_enrich_power_fit(_fit_power("exp2_s1", "transition_width_10_90", n_exp2, width_exp2,
+                                            "finite-size transition sharpening"), n_exp2, width_exp2, 21_002))
 
-    stable_rows = [row for row in exp2_rows if (_float(row.get("n_society")) or 0) >= 500]
+    stable_rows = [row for row in exp2_rows if (_float(row.get("n_society")) or 0) >= STABLE_N_MIN]
     n_stable, ac_stable = _xy(stable_rows, "alpha_c_logistic")
     _, width_stable = _xy(stable_rows, "transition_width_10_90")
-    fits.append(_fit_power("exp2_s1_n_ge_500", "alpha_c", n_stable, ac_stable,
-                           "exclude small-N nonmonotonic finite-size noise"))
-    fits.append(_fit_power("exp2_s1_n_ge_500", "transition_width_10_90", n_stable, width_stable,
-                           "stable-regime transition sharpening"))
+    fits.append(_enrich_power_fit(_fit_power("exp2_s1_n_ge_500", "alpha_c", n_stable, ac_stable,
+                                            "exclude small-N nonmonotonic finite-size noise"), n_stable, ac_stable, 21_003))
+    fits.append(_enrich_power_fit(_fit_power("exp2_s1_n_ge_500", "transition_width_10_90", n_stable, width_stable,
+                                            "stable-regime transition sharpening"), n_stable, width_stable, 21_004))
 
     by_mode: dict[str, list[dict]] = defaultdict(list)
     for row in exp5_rows:
@@ -197,10 +308,10 @@ def _fit_rows(exp2_rows: list[dict], exp5_rows: list[dict], exp7_rows: list[dict
     for mode, rows in by_mode.items():
         n_vals, ac_vals = _xy(rows, "alpha_c_logistic")
         _, width_vals = _xy(rows, "transition_width_10_90")
-        fits.append(_fit_power(f"exp5_{mode}", "alpha_c", n_vals, ac_vals,
-                               "capacity-control robustness check"))
-        fits.append(_fit_power(f"exp5_{mode}", "transition_width_10_90", n_vals, width_vals,
-                               "capacity-control width check"))
+        fits.append(_enrich_power_fit(_fit_power(f"exp5_{mode}", "alpha_c", n_vals, ac_vals,
+                            "capacity-control robustness check"), n_vals, ac_vals, 22_000 + len(fits)))
+        fits.append(_enrich_power_fit(_fit_power(f"exp5_{mode}", "transition_width_10_90", n_vals, width_vals,
+                            "capacity-control width check"), n_vals, width_vals, 22_000 + len(fits)))
 
     by_scenario: dict[str, list[dict]] = defaultdict(list)
     for row in exp7_rows:
@@ -208,10 +319,10 @@ def _fit_rows(exp2_rows: list[dict], exp5_rows: list[dict], exp7_rows: list[dict
     for scenario, rows in sorted(by_scenario.items()):
         n_vals, ac_vals = _xy(rows, "alpha_c_logistic")
         _, width_vals = _xy(rows, "transition_width_10_90")
-        fits.append(_fit_power(f"exp7_{scenario}", "alpha_c", n_vals, ac_vals,
-                               "cross-mechanism threshold audit"))
-        fits.append(_fit_power(f"exp7_{scenario}", "transition_width_10_90", n_vals, width_vals,
-                               "cross-mechanism transition width"))
+        fits.append(_enrich_power_fit(_fit_power(f"exp7_{scenario}", "alpha_c", n_vals, ac_vals,
+                            "cross-mechanism threshold audit"), n_vals, ac_vals, 23_000 + len(fits)))
+        fits.append(_enrich_power_fit(_fit_power(f"exp7_{scenario}", "transition_width_10_90", n_vals, width_vals,
+                            "cross-mechanism transition width"), n_vals, width_vals, 23_000 + len(fits)))
     return fits
 
 
@@ -337,6 +448,41 @@ def _fit_lookup(fits: list[dict], dataset: str, metric: str, model: str = "power
     )
 
 
+def _interval(row: dict | None, low_key: str, high_key: str, digits: int = 3) -> str:
+    if row is None:
+        return "NA"
+    low = _fmt(row.get(low_key), digits)
+    high = _fmt(row.get(high_key), digits)
+    if low == "NA" or high == "NA":
+        return "NA"
+    return f"[{low}, {high}]"
+
+
+def _exp2_law_rows(fits: list[dict]) -> list[dict]:
+    rows = []
+    for row in fits:
+        if not str(row.get("dataset", "")).startswith("exp2_s1"):
+            continue
+        if row.get("model") != "power":
+            continue
+        rows.append({
+            "dataset": row.get("dataset"),
+            "metric": row.get("metric"),
+            "n_points": row.get("n_points"),
+            "nu_or_gamma": row.get("nu_or_gamma"),
+            "nu_ci_low": row.get("nu_ci_low"),
+            "nu_ci_high": row.get("nu_ci_high"),
+            "log_r2": row.get("log_r2"),
+            "loo_nu_min": row.get("loo_nu_min"),
+            "loo_nu_max": row.get("loo_nu_max"),
+            "loo_nu_span": row.get("loo_nu_span"),
+            "loo_log_r2_min": row.get("loo_log_r2_min"),
+            "evidence_grade": row.get("evidence_grade"),
+            "note": row.get("note"),
+        })
+    return rows
+
+
 def _write_markdown(out: Path, fits: list[dict], exp8_rows: list[dict]) -> None:
     exp2_power = _fit_lookup(fits, "exp2_s1", "alpha_c")
     exp2_finite = _fit_lookup(fits, "exp2_s1", "alpha_c", "alpha_inf_plus_power")
@@ -345,6 +491,8 @@ def _write_markdown(out: Path, fits: list[dict], exp8_rows: list[dict]) -> None:
     stable_width = _fit_lookup(fits, "exp2_s1_n_ge_500", "transition_width_10_90")
     s2_power = _fit_lookup(fits, "exp7_s2", "alpha_c")
     s4_power = _fit_lookup(fits, "exp7_s4", "alpha_c")
+    exp2_n_points = int(exp2_power.get("n_points") or 0) if exp2_power else 0
+    exp2_status = "dense" if exp2_n_points >= 10 else "sparse"
 
     top = _strongest_sensitivities(exp8_rows)
     top_lines = []
@@ -358,15 +506,15 @@ def _write_markdown(out: Path, fits: list[dict], exp8_rows: list[dict]) -> None:
 
 ## Verdict
 
-The current scaling package is enough for a predictive empirical-theory claim, but the evidence should be reorganized around three estimands: alpha_c(N), transition width, and threshold shift under interventions. Exp2 is already the main scaling-law experiment. Exp7 supports mechanism heterogeneity. Exp8 supports comparative statics at the probability level, but should be upgraded to alpha_c shifts for the paper's strongest causal-looking claims.
+WolfBench should state the theory as a finite-size scaling ansatz, not as a thermodynamic phase-transition theorem. The main law claim is protocol-specific: under the fixed S1 Exp2 protocol, collapse curves define an estimated midpoint alpha_c(N) and transition width w_N, and these estimands can be fitted by empirical power laws. Current Exp2 status is **{exp2_status}** with {exp2_n_points} positive N points; use the evidence grade below to decide whether to write "empirical finite-size scaling law" or the weaker "finite-size scaling trend".
 
 ## Current fitted laws
 
-- Exp2 S1 alpha_c power law: alpha_c ~= A * N^beta, with beta={_fmt(exp2_power and exp2_power['beta'], 4)} and nu={_fmt(exp2_power and exp2_power['nu_or_gamma'], 4)}. Log-space R2={_fmt(exp2_power and exp2_power['log_r2'], 4)}.
-- Exp2 S1 finite-asymptote fit: alpha_inf={_fmt(exp2_finite and exp2_finite['alpha_inf'], 4)}, nu={_fmt(exp2_finite and exp2_finite['nu_or_gamma'], 4)}. The fit collapses toward a near-zero alpha_inf, so current data do not identify a positive asymptotic threshold; use the pure power law in the main text.
-- Exp2 S1 transition-width scaling: width ~= B * N^(-gamma), with gamma={_fmt(exp2_width and exp2_width['nu_or_gamma'], 4)}. Log-space R2={_fmt(exp2_width and exp2_width['log_r2'], 4)}.
-- Stable-regime S1 alpha_c fit using N>=500: nu={_fmt(stable_power and stable_power['nu_or_gamma'], 4)}. This is cleaner because N=100/200 have visible finite-size noise.
-- Stable-regime S1 width fit using N>=500: gamma={_fmt(stable_width and stable_width['nu_or_gamma'], 4)}.
+- Exp2 S1 alpha_c power ansatz: alpha_c ~= A * N^beta, with beta={_fmt(exp2_power and exp2_power['beta'], 4)} and nu={_fmt(exp2_power and exp2_power['nu_or_gamma'], 4)}. Bootstrap nu CI={_interval(exp2_power, 'nu_ci_low', 'nu_ci_high')}; leave-one-N-out nu range={_interval(exp2_power, 'loo_nu_min', 'loo_nu_max')}; log-space R2={_fmt(exp2_power and exp2_power['log_r2'], 4)}; grade={exp2_power.get('evidence_grade') if exp2_power else 'NA'}.
+- Exp2 S1 finite-asymptote diagnostic: alpha_inf={_fmt(exp2_finite and exp2_finite['alpha_inf'], 4)}, nu={_fmt(exp2_finite and exp2_finite['nu_or_gamma'], 4)}. Report this only as a diagnostic unless dense data identify a positive alpha_inf with stable uncertainty.
+- Exp2 S1 transition-width ansatz: width ~= B * N^(-gamma), with gamma={_fmt(exp2_width and exp2_width['nu_or_gamma'], 4)}. Bootstrap gamma CI={_interval(exp2_width, 'nu_ci_low', 'nu_ci_high')}; leave-one-N-out gamma range={_interval(exp2_width, 'loo_nu_min', 'loo_nu_max')}; log-space R2={_fmt(exp2_width and exp2_width['log_r2'], 4)}; grade={exp2_width.get('evidence_grade') if exp2_width else 'NA'}.
+- Stable-regime S1 alpha_c fit using N>={STABLE_N_MIN}: nu={_fmt(stable_power and stable_power['nu_or_gamma'], 4)}, CI={_interval(stable_power, 'nu_ci_low', 'nu_ci_high')}. This row protects the main claim from small-N finite-size noise.
+- Stable-regime S1 width fit using N>={STABLE_N_MIN}: gamma={_fmt(stable_width and stable_width['nu_or_gamma'], 4)}, CI={_interval(stable_width, 'nu_ci_low', 'nu_ci_high')}.
 - Exp7 S2 alpha_c fit: nu={_fmt(s2_power and s2_power['nu_or_gamma'], 4)}. This is the strongest cross-mechanism scaling signal.
 - Exp7 S4 alpha_c fit: nu={_fmt(s4_power and s4_power['nu_or_gamma'], 4)}. The sign is not expected to match S1 because S4's dominant channel is diffuse under the current collapse metric.
 
@@ -385,7 +533,7 @@ The current scaling package is enough for a predictive empirical-theory claim, b
 
 ## Recommended experiment optimization
 
-1. Make Exp2 the canonical scaling law. Report alpha_c(N)=A*N^(-nu) as the conservative main fit. Mention alpha_c(N)=alpha_inf+a*N^(-nu) only as a robustness diagnostic because current data do not identify a positive alpha_inf. Use N>=500 as a robustness row because N=100/200 are noisy.
+1. Make Exp2 the canonical finite-size scaling ansatz. Report alpha_c(N)=A*N^(-nu) as the conservative main fit. Mention alpha_c(N)=alpha_inf+a*N^(-nu) only as a robustness diagnostic unless dense data identify a positive alpha_inf. Use N>={STABLE_N_MIN} as a robustness row because small-N points can have visible finite-size noise.
 2. Add one plot and one CSV for transition width scaling. The width exponent is as important as alpha_c: it directly supports the finite-size critical-regime claim.
 3. Reframe Exp5 as a confound check, not a main theorem test. It asks whether the S1 scaling survives capacity normalization. To make it cleaner, add N=500 and N=2000 or increase seeds at N=200 where the CI is very wide.
 4. Upgrade Exp8 into a threshold-shift comparative-statics experiment. For each lever, run alpha grids around S1/S2 critical values and report delta alpha_c instead of only delta P(collapse). Minimal levers: asset_liquidity_scale, social_mean_degree, retail_risk_appetite, and placement.
@@ -396,7 +544,7 @@ The current scaling package is enough for a predictive empirical-theory claim, b
 
 ## Paper-facing interpretation
 
-The strongest theory story is not a universal phase transition. It is a predictive finite-size framework: estimate P(collapse | N, alpha), summarize its midpoint alpha_c and width, then show how mechanism and controls shift those estimands. This turns the experiments into tests of the theory rather than illustrations after the fact.
+The strongest theory story is not a universal phase transition. It is a protocol-specific empirical law: estimate P(collapse | N, alpha), summarize its midpoint alpha_c and width, fit finite-size scaling exponents with uncertainty and leave-one-N-out stability, then show how mechanisms and controls shift those estimands. This turns the experiments into tests of the theory rather than illustrations after the fact.
 """
     (out / "scaling_law_audit.md").write_text(text)
 
@@ -410,6 +558,7 @@ def main() -> None:
 
     fits = _fit_rows(exp2_rows, exp5_rows, exp7_rows)
     write_csv(fits, out / "scaling_law_fits.csv")
+    write_csv(_exp2_law_rows(fits), out / "exp2_dense_law_summary.csv")
     write_json({
         "inputs": {
             "exp2": str(EXP2_DIR / "alpha_critical_summary.csv"),
@@ -422,6 +571,10 @@ def main() -> None:
             "s1_width_scaling_fit": "s1_width_scaling_fit.png",
             "cross_mechanism_alpha_scaling": "cross_mechanism_alpha_scaling.png",
             "capacity_control_alpha_scaling": "capacity_control_alpha_scaling.png",
+        },
+        "tables": {
+            "all_fits": "scaling_law_fits.csv",
+            "exp2_law_summary": "exp2_dense_law_summary.csv",
         },
         "fits": fits,
     }, out / "summary.json")

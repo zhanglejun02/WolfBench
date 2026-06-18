@@ -40,9 +40,50 @@ def _env_int_list(name: str, default: str) -> list[int]:
     return [int(x) for x in _env_list(name, default)]
 
 
-ELIGIBLE_DEFENSES = _env_list("WOLFBENCH_EXP6_DEFENSES", "noguard,random,rule")
-UPPER_BOUNDS = _env_list("WOLFBENCH_EXP6_UPPER_BOUNDS", "oracle")
-DEFENSES = ELIGIBLE_DEFENSES + UPPER_BOUNDS
+def _dedupe(names: list[str]) -> list[str]:
+    out: list[str] = []
+    for name in names:
+        if name not in out:
+            out.append(name)
+    return out
+
+
+def _competitive_defenses(defenses: list[str], upper_bounds: list[str] | None = None) -> list[str]:
+    upper = set(upper_bounds or [])
+    return [
+        defense_name for defense_name in defenses
+        if defense_name not in upper
+        and get_track(defense_name) not in {"control", "oracle_upper_bound", "legacy_assisted_rule"}
+    ]
+
+
+def _env_bool(name: str, default: str = "") -> bool | None:
+    value = os.getenv(name, default).strip().lower()
+    if not value:
+        return None
+    if value in {"1", "true", "yes", "y", "on"}:
+        return True
+    if value in {"0", "false", "no", "n", "off"}:
+        return False
+    raise ValueError(f"{name} must be a boolean-like value")
+
+
+def _llm_policy_kwargs() -> dict:
+    return {
+        "provider": os.getenv("WOLFBENCH_EXP6_LLM_PROVIDER") or os.getenv("WOLFBENCH_LLM_PROVIDER"),
+        "model": os.getenv("WOLFBENCH_EXP6_LLM_MODEL") or os.getenv("WOLFBENCH_LLM_MODEL"),
+        "base_url": os.getenv("WOLFBENCH_EXP6_LLM_BASE_URL") or os.getenv("WOLFBENCH_LLM_BASE_URL"),
+        "api_key": os.getenv("WOLFBENCH_EXP6_LLM_API_KEY") or os.getenv("WOLFBENCH_LLM_API_KEY"),
+        "strict": _env_bool("WOLFBENCH_EXP6_LLM_STRICT"),
+    }
+
+
+REQUESTED_DEFENSES = _dedupe(_env_list("WOLFBENCH_EXP6_DEFENSES", "noguard,random,rule"))
+UPPER_BOUNDS = _dedupe(_env_list("WOLFBENCH_EXP6_UPPER_BOUNDS", "oracle"))
+DEFENSES = _dedupe(REQUESTED_DEFENSES + UPPER_BOUNDS)
+ELIGIBLE_DEFENSES = _competitive_defenses(REQUESTED_DEFENSES, UPPER_BOUNDS)
+CONTROL_DEFENSES = [d for d in DEFENSES if get_track(d) == "control"]
+UPPER_BOUND_DEFENSES = [d for d in DEFENSES if d in UPPER_BOUNDS or get_track(d) == "oracle_upper_bound"]
 SCENARIOS = _env_list("WOLFBENCH_EXP6_SCENARIOS", "s1,s2,s3,s4")
 DEFAULT_ALPHA_GRIDS = {
     "s1": "0.0,0.0075,0.01,0.015,0.02,0.03",
@@ -75,7 +116,7 @@ def _build_specs(scenario: str, defense_name: str, n_society: int) -> list[RunSp
     specs = []
     for a in _alphas_for(scenario):
         for s in SEEDS:
-            policy = get_policy(defense_name)
+            policy = get_policy(defense_name, **_llm_policy_kwargs())
             specs.append(RunSpec(
                 scenario=scenario, n_society=n_society, alpha=a, seed=s,
                 defense=defense_name != "noguard",
@@ -106,9 +147,11 @@ def _mean(values: list[float]) -> float:
 def _defenses_in_order(rows: list[dict], defenses: list[str] | None = None) -> list[str]:
     row_defenses = {str(r.get("defense", r.get("Defense model", ""))) for r in rows}
     ordered: list[str] = []
-    for defense_name in defenses or []:
-        if defense_name in row_defenses and defense_name not in ordered:
-            ordered.append(defense_name)
+    if defenses is not None:
+        for defense_name in defenses:
+            if defense_name in row_defenses and defense_name not in ordered:
+                ordered.append(defense_name)
+        return ordered
     for row in rows:
         defense_name = str(row.get("defense", row.get("Defense model", "")))
         if defense_name and defense_name not in ordered:
@@ -168,6 +211,21 @@ def _write_display_csv(rows: list[dict], path) -> None:
         w.writeheader()
         for row in rows:
             w.writerow(row)
+
+
+def _write_markdown_display_table(handle, rows: list[dict], empty_message: str) -> None:
+    if not rows:
+        handle.write(f"{empty_message}\n")
+        return
+    handle.write("| Defense model | S1 | S2 | S3 | S4 | Avg DefenseScore | Avg ThresholdShift | Worst Score |\n")
+    handle.write("|---|---:|---:|---:|---:|---:|---:|---:|\n")
+    for r in rows:
+        handle.write(
+            f"| {r['Defense model']} | {_format_score(r['S1'])} | {_format_score(r['S2'])} | "
+            f"{_format_score(r['S3'])} | {_format_score(r['S4'])} | "
+            f"{_format_score(r['Avg DefenseScore'])} | {_format_shift(r['Avg ThresholdShift'])} | "
+            f"{_format_score(r['Worst Score'])} |\n"
+        )
 
 
 def _format_score(value) -> str:
@@ -294,20 +352,28 @@ def main():
         for r in scenario_leaderboard:
             w.writerow(r)
 
-    display_leaderboard = _build_display_leaderboard(scenario_leaderboard, DEFENSES)
+    display_leaderboard = _build_display_leaderboard(scenario_leaderboard, ELIGIBLE_DEFENSES)
+    control_leaderboard = _build_display_leaderboard(scenario_leaderboard, CONTROL_DEFENSES)
+    upper_bound_leaderboard = _build_display_leaderboard(scenario_leaderboard, UPPER_BOUND_DEFENSES)
     _write_display_csv(display_leaderboard, out / "leaderboard.csv")
     _write_display_csv(display_leaderboard, out / "leaderboard_overall.csv")
+    _write_display_csv(control_leaderboard, out / "leaderboard_controls.csv")
+    _write_display_csv(upper_bound_leaderboard, out / "leaderboard_upper_bounds.csv")
 
     overall_metrics = []
     seed_rank_rows = _seed_level_rank_rows(all_rows)
-    rank_stability_summary = rank_stability(
-        seed_rank_rows,
-        score_key="official_score",
-        item_key="defense",
-        sample_key="seed",
-        n_boot=CI_BOOT,
-        top_k=min(3, len(DEFENSES)),
-        seed=17,
+    competitive_seed_rank_rows = [r for r in seed_rank_rows if r["defense"] in ELIGIBLE_DEFENSES]
+    rank_stability_summary = (
+        rank_stability(
+            competitive_seed_rank_rows,
+            score_key="official_score",
+            item_key="defense",
+            sample_key="seed",
+            n_boot=CI_BOOT,
+            top_k=min(3, len(ELIGIBLE_DEFENSES)),
+            seed=17,
+        )
+        if competitive_seed_rank_rows and ELIGIBLE_DEFENSES else {}
     )
     for d in DEFENSES:
         rows = [r for r in scenario_leaderboard if r["defense"] == d]
@@ -338,19 +404,21 @@ def main():
     with open(out / "leaderboard.md", "w") as f:
         f.write("# WolfBench Exp6 Defense Leaderboard\n\n")
         f.write(f"N={N_GRID}, alpha_grids={alpha_grids}, seeds={SEEDS}\n\n")
-        f.write("S1-S4 are mean raw DefenseScore values for each scenario, averaged across N. Avg ThresholdShift treats missing per-scenario threshold_shift values as 0.0.\n\n")
-        f.write("| Defense model | S1 | S2 | S3 | S4 | Avg DefenseScore | Avg ThresholdShift | Worst Score |\n")
-        f.write("|---|---:|---:|---:|---:|---:|---:|---:|\n")
-        for r in display_leaderboard:
-            f.write(
-                f"| {r['Defense model']} | {_format_score(r['S1'])} | {_format_score(r['S2'])} | "
-                f"{_format_score(r['S3'])} | {_format_score(r['S4'])} | "
-                f"{_format_score(r['Avg DefenseScore'])} | {_format_shift(r['Avg ThresholdShift'])} | "
-                f"{_format_score(r['Worst Score'])} |\n"
-            )
+        f.write("S1-S4 are mean raw DefenseScore values for each scenario, averaged across N. Avg ThresholdShift treats missing per-scenario threshold_shift values as 0.0.\n")
+        f.write("Competitive rank excludes control tracks and oracle upper bounds.\n\n")
+        f.write("## Eligible Submissions\n\n")
+        _write_markdown_display_table(f, display_leaderboard, "No eligible submissions were requested.\n")
+        if control_leaderboard:
+            f.write("\n## Controls (Not Ranked)\n\n")
+            _write_markdown_display_table(f, control_leaderboard, "No controls were requested.\n")
+        if upper_bound_leaderboard:
+            f.write("\n## Upper Bounds (Not Ranked)\n\n")
+            _write_markdown_display_table(f, upper_bound_leaderboard, "No upper bounds were requested.\n")
 
     write_json({
+        "requested_defenses": REQUESTED_DEFENSES,
         "eligible_defenses": ELIGIBLE_DEFENSES,
+        "control_defenses": CONTROL_DEFENSES,
         "upper_bounds": UPPER_BOUNDS,
         "defenses": DEFENSES, "scenarios": SCENARIOS,
         "alpha_grids": alpha_grids,
@@ -358,8 +426,11 @@ def main():
         "leaderboard": scenario_leaderboard,
         "overall": overall_metrics,
         "display_leaderboard": display_leaderboard,
+        "display_controls": control_leaderboard,
+        "display_upper_bounds": upper_bound_leaderboard,
         "seed_rank_stability": rank_stability_summary,
         "seed_level_rank_rows": seed_rank_rows,
+        "competitive_seed_level_rank_rows": competitive_seed_rank_rows,
     }, out / "summary.json")
 
     # ---- Plot DefenseScore bars ----
@@ -409,6 +480,10 @@ def main():
     plt.close(fig)
 
     print("\nLeaderboard written to", out)
+    if control_leaderboard:
+        print("Controls not ranked:", ", ".join(r["Defense model"] for r in control_leaderboard))
+    if upper_bound_leaderboard:
+        print("Upper bounds not ranked:", ", ".join(r["Defense model"] for r in upper_bound_leaderboard))
     for r in display_leaderboard:
         print(
             f"  {r['Defense model']:<12} avg={r['Avg DefenseScore']:>7.2f}  "

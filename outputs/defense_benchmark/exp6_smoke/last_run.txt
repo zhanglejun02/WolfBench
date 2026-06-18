@@ -1,2 +1,0 @@
-summary_written at 2026-06-08T15:57:36Z
-output_dir=outputs/defense_benchmark/exp6_smoke

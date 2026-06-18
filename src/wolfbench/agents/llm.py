@@ -113,6 +113,7 @@ class OpenAIChatBackend:
     response_format: bool = True
     strict: bool = False
     extra_body: dict[str, Any] | None = None
+    extra_headers: dict[str, str] | None = None
     name: str = "openai_chat"
     calls: int = 0
     failures: int = 0
@@ -126,6 +127,7 @@ class OpenAIChatBackend:
                 api_key=self.api_key or os.getenv("OPENAI_API_KEY") or "EMPTY",
                 base_url=self.base_url or os.getenv("OPENAI_BASE_URL"),
                 timeout=self.timeout,
+                default_headers=self.extra_headers,
             )
         return self._client
 
@@ -197,6 +199,40 @@ class VLLMChatBackend(OpenAIChatBackend):
     name: str = "vllm_chat"
 
 
+@dataclass
+class OpenRouterChatBackend(OpenAIChatBackend):
+    """OpenRouter backend using its OpenAI-compatible chat endpoint."""
+    model: str = field(default_factory=lambda: os.getenv(
+        "WOLFBENCH_OPENROUTER_MODEL",
+        os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
+    ))
+    api_key: str | None = field(default_factory=lambda: os.getenv("OPENROUTER_API_KEY"))
+    base_url: str | None = field(default_factory=lambda: os.getenv(
+        "WOLFBENCH_OPENROUTER_BASE_URL",
+        os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+    ))
+    temperature: float = 0.2
+    max_tokens: int = 256
+    strict: bool = True
+    name: str = "openrouter_chat"
+
+    def __post_init__(self):
+        headers = dict(self.extra_headers or {})
+        referer = (
+            os.getenv("WOLFBENCH_OPENROUTER_SITE_URL")
+            or os.getenv("OPENROUTER_SITE_URL")
+        )
+        title = (
+            os.getenv("WOLFBENCH_OPENROUTER_APP_NAME")
+            or os.getenv("OPENROUTER_APP_NAME")
+        )
+        if referer:
+            headers.setdefault("HTTP-Referer", referer)
+        if title:
+            headers.setdefault("X-OpenRouter-Title", title)
+        self.extra_headers = headers or None
+
+
 def make_chat_backend(provider: str | None = None,
                       model: str | None = None,
                       base_url: str | None = None,
@@ -211,8 +247,21 @@ def make_chat_backend(provider: str | None = None,
             api_key=api_key or os.getenv("WOLFBENCH_VLLM_API_KEY", "EMPTY"),
             strict=True if strict is None else strict,
         )
+    if key == "openrouter":
+        return OpenRouterChatBackend(
+            model=model or os.getenv(
+                "WOLFBENCH_OPENROUTER_MODEL",
+                os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini"),
+            ),
+            base_url=base_url or os.getenv(
+                "WOLFBENCH_OPENROUTER_BASE_URL",
+                os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1"),
+            ),
+            api_key=api_key or os.getenv("OPENROUTER_API_KEY"),
+            strict=True if strict is None else strict,
+        )
     if key != "openai":
-        raise ValueError("provider must be 'openai' or 'vllm'")
+        raise ValueError("provider must be 'openai', 'openrouter', or 'vllm'")
     return OpenAIChatBackend(
         model=model or os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         base_url=base_url or os.getenv("OPENAI_BASE_URL"),

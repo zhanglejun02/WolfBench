@@ -60,10 +60,10 @@ def list_scenarios():
 @click.option("--llm-model", default=None,
               help="OpenAI-compatible model id; if unset uses RuleFallbackBackend.")
 @click.option("--llm-provider", default="openai",
-              type=click.Choice(["openai", "vllm"]),
+              type=click.Choice(["openai", "openrouter", "vllm"]),
               help="Backend provider for --llm-leaders.")
 @click.option("--llm-base-url", default=None,
-              help="OpenAI-compatible base URL, e.g. http://127.0.0.1:8000/v1.")
+              help="OpenAI-compatible base URL, e.g. http://127.0.0.1:8000/v1 or https://openrouter.ai/api/v1.")
 @click.option("--llm-api-key", default=None,
               help="API key for the OpenAI-compatible endpoint; vLLM accepts EMPTY.")
 @click.option("--out", type=click.Path(), default=None,
@@ -274,10 +274,10 @@ def _run_one(scenario_id, n_society, alpha, seed, defense_spec, policy_kwargs=No
 @click.option("--llm-model", default=None,
               help="Used when --defense=llm.")
 @click.option("--llm-provider", default=None,
-                  type=click.Choice(["openai", "vllm"]),
+                  type=click.Choice(["openai", "openrouter", "vllm"]),
                   help="Used when --defense=llm; --defense=qwen defaults to vllm.")
 @click.option("--llm-base-url", default=None,
-                  help="OpenAI-compatible base URL, e.g. http://127.0.0.1:8000/v1.")
+                  help="OpenAI-compatible base URL, e.g. http://127.0.0.1:8000/v1 or https://openrouter.ai/api/v1.")
 @click.option("--llm-api-key", default=None,
                   help="API key for the OpenAI-compatible endpoint; vLLM accepts EMPTY.")
 @click.option("--model-path", default=None, type=click.Path(),

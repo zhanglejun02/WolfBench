@@ -17,6 +17,10 @@ def _read_csv(path: Path) -> list[dict[str, str]]:
         return list(csv.DictReader(f))
 
 
+def _read_csv_if_exists(path: Path) -> list[dict[str, str]]:
+    return _read_csv(path) if path.exists() else []
+
+
 def _float(row: dict[str, str], key: str) -> float:
     value = row.get(key, "")
     return float(value) if value not in {"", "None", "null"} else 0.0
@@ -55,7 +59,12 @@ def main() -> None:
 
     leaderboard = _read_csv(leaderboard_path)
     overall = _read_csv(overall_path)
-    by_defense = {_defense_name(row): row for row in overall}
+    comparison_rows = (
+        overall
+        + _read_csv_if_exists(EXP6_DIR / "leaderboard_controls.csv")
+        + _read_csv_if_exists(EXP6_DIR / "leaderboard_upper_bounds.csv")
+    )
+    by_defense = {_defense_name(row): row for row in comparison_rows}
     if "qwen" not in by_defense:
         raise RuntimeError("The exp6 leaderboard does not contain a qwen row.")
 

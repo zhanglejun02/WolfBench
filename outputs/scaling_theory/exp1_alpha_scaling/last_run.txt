@@ -1,2 +1,0 @@
-summary_written at 2026-06-16T05:26:06Z
-output_dir=outputs/scaling_theory/exp1_alpha_scaling

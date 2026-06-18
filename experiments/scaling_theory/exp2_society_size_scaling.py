@@ -1,4 +1,4 @@
-"""Experiment 2: alpha_c(N) with near-threshold alpha grid.
+"""Experiment 2: alpha_c(N) with a dense near-threshold finite-size grid.
 
 This is the main controlled scaling-protocol experiment. It estimates the
 critical harmful-agent ratio with a logistic fit and bootstrap confidence
@@ -23,7 +23,10 @@ from wolfbench.metrics import binomial_rate_summary
 
 
 SCENARIO = "s1"
-N_GRID = env_int_list("WOLFBENCH_EXP2_N_GRID", "100,200,500,1000,2000,5000")
+N_GRID = env_int_list(
+    "WOLFBENCH_EXP2_N_GRID",
+    "100,150,200,300,500,750,1000,1500,2000,3000,5000",
+)
 ALPHAS = env_float_list(
     "WOLFBENCH_EXP2_ALPHAS",
     "0.0,0.0025,0.005,0.0075,0.01,0.0125,0.015,0.0175,0.02,0.0225,0.025,0.03,0.04",

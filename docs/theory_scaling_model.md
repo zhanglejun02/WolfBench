@@ -1,9 +1,10 @@
-# Harmful-Agent Scaling Model
+# Harmful-Agent Finite-Size Scaling Model
 
 This note frames WolfBench as a finite-size critical-regime benchmark. The goal
 is not to claim a thermodynamic phase transition. The goal is to define
 estimands that can be fitted, shifted by interventions, and checked across
-mechanisms.
+mechanisms. The word "law" should be read as a protocol-specific empirical
+scaling relation, not as a universal physical law.
 
 ## Mechanism Sketch
 
@@ -36,7 +37,7 @@ finite-size critical regime appears when exposure reproduction and market-impact
 feedback are large enough that retail flow pushes at least one CollapseScore
 component over its threshold within the episode horizon.
 
-## Proposition 1: Critical Harmful Ratio Exists
+## Proposition 1: Estimated Critical Harmful Ratio
 
 For a fixed mechanism `m`, society size `N`, liquidity `L`, graph exposure `G`,
 and retail susceptibility vector `beta`, collapse probability is modeled by the
@@ -53,31 +54,43 @@ local transition steepness. The corresponding transition width is
 w_N^m = alpha(P=0.9) - alpha(P=0.1) = 2 log(9) / s_N^m
 ```
 
-This is a statistical critical-regime definition, not an asymptotic theorem.
-The evidence target is a stable midpoint `alpha_c` plus transition sharpening as
-`N` grows.
+This is a statistical critical-regime definition, not an asymptotic theorem. The
+evidence target is a reproducible midpoint `alpha_c`, transition sharpening as
+`N` grows, and exponent stability under bootstrap and leave-one-`N`-out checks.
 
-## Finite-Size Scaling Law
+## Finite-Size Scaling Ansatz
 
-The primary scaling hypothesis is
-
-```text
-alpha_c^m(N) = alpha_inf^m + a_m N^{-nu_m}
-w_N^m = b_m N^{-gamma_m}
-```
-
-The conservative reporting form is
+The primary scaling ansatz for the fixed S1 protocol is
 
 ```text
-alpha_c^m(N) ~= A_m N^{-nu_m}
+alpha_c(N) = alpha_inf + a N^{-nu}
+w_N = b N^{-gamma}
 ```
 
-because the current number of `N` values is too small to identify a positive
-`alpha_inf` strongly. In the current Exp2 S1 audit, the all-`N` power fit gives
-`nu ~= 0.116`, while the cleaner `N >= 500` fit gives `nu ~= 0.165`. The
-finite-asymptote fit collapses toward a near-zero `alpha_inf`, so it should be
-reported only as a diagnostic. The transition width scales with `gamma ~= 0.227`
-on all `N`, and `gamma ~= 0.279` on `N >= 500`.
+The conservative main-text form is the pure power relation
+
+```text
+alpha_c(N) ~= A N^{-nu}
+```
+
+because a finite asymptote `alpha_inf` is harder to identify from a moderate
+number of finite `N` values. The finite-asymptote model should be reported as a
+diagnostic unless the dense Exp2 run identifies a positive `alpha_inf` with a
+stable confidence interval.
+
+This gives a three-level evidence ladder:
+
+| Evidence level | Required support | Paper wording |
+| --- | --- | --- |
+| Diagnostic trend | Few `N` points or unstable leave-one-out exponents | "finite-size scaling trend" |
+| Law candidate | Dense `N` grid, bootstrap exponent CI, stable leave-one-out range | "empirical finite-size scaling law under the S1 protocol" |
+| Universal law | Same exponent across mechanisms and protocol variants | Not claimed |
+
+The canonical run for the law candidate is dense Exp2 with
+`N = 100,150,200,300,500,750,1000,1500,2000,3000,5000`, the near-threshold alpha
+grid, and 50 seeds. Report both all-`N` and `N >= 500` fits. The latter is a
+stable-regime robustness row that reduces sensitivity to small-`N` finite-size
+noise.
 
 ## Proposition 2: Comparative Statics
 
@@ -124,9 +137,10 @@ This turns defense evaluation into a critical-regime intervention test.
 
 ## Mechanism Heterogeneity
 
-The same estimator applies across mechanisms, but `alpha_c^m(N)` is
-mechanism-specific because each scenario has a different dominant amplification
-channel.
+The same estimator applies across mechanisms, but the exponent is not assumed to
+be universal. Each scenario has a mechanism-specific `alpha_c^m(N)`, transition
+width, and dominant amplification channel. S1 is the canonical law experiment;
+S2-S4 test whether the estimator transfers to other mechanisms.
 
 | Scenario | Dominant channel | Theory interpretation |
 | --- | --- | --- |
@@ -141,14 +155,17 @@ collapse estimator.
 
 ## Experiment Alignment
 
-- Exp2 is the canonical finite-size scaling experiment for Proposition 1.
+- Exp2 is the canonical finite-size scaling experiment for Proposition 1. Dense
+   Exp2 is the only experiment that should carry the main law claim.
 - Exp5 is a capacity-confound robustness check, not the main theory test.
-- Exp7 establishes that mechanisms have different `alpha_c^m(N)` scales.
+- Exp7 establishes that mechanisms have different `alpha_c^m(N)` scales and
+   should not be used to claim a universal exponent.
 - Exp8 should be upgraded from probability sensitivity to threshold-shift
   comparative statics for Proposition 2.
 - Defense benchmark experiments should add alpha sweeps and report
   `ThresholdShift` for Proposition 3.
 
-Use phrases such as "finite-size threshold behavior", "critical harmful-agent
-regime", and "estimated critical ratio". Avoid claiming a strict phase
-transition.
+Use phrases such as "finite-size scaling ansatz", "finite-size threshold
+behavior", "critical harmful-agent regime", "estimated critical ratio", and
+"protocol-specific empirical law". Avoid claiming a strict phase transition,
+thermodynamic limit, universal exponent, or asymptotic theorem.

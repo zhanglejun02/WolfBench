@@ -1,5 +1,6 @@
 from experiments.defense_benchmark.exp6_defense_leaderboard import (
     _build_display_leaderboard,
+    _competitive_defenses,
 )
 import pytest
 
@@ -78,6 +79,26 @@ def test_exp6_display_leaderboard_aggregates_scenarios_and_sorts():
     assert alpha["Avg DefenseScore"] == 33.75
     assert alpha["Avg ThresholdShift"] == 0.2
     assert alpha["Worst Score"] == 15.0
+
+
+def test_exp6_competitive_defenses_exclude_controls_and_upper_bounds():
+    defenses = ["noguard", "random", "rule", "distilled", "oracle"]
+
+    assert _competitive_defenses(defenses, upper_bounds=["oracle"]) == ["rule", "distilled"]
+
+
+def test_exp6_display_leaderboard_respects_explicit_defense_filter():
+    rows = [
+        _leaderboard_row("s1", 1000, "noguard", 0.0, 0.0),
+        _leaderboard_row("s1", 1000, "random", -1.0, 0.0),
+        _leaderboard_row("s1", 1000, "rule", 2.0, 0.0),
+        _leaderboard_row("s1", 1000, "distilled", 3.0, 0.0),
+        _leaderboard_row("s1", 1000, "oracle", 4.0, 0.0),
+    ]
+
+    leaderboard = _build_display_leaderboard(rows, defenses=["rule", "distilled"])
+
+    assert [row["Defense model"] for row in leaderboard] == ["distilled", "rule"]
 
 
 def test_exp5_threshold_shift_summary_reports_alpha_c_delta():

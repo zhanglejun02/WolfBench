@@ -11,6 +11,7 @@ or programmatically::
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -138,7 +139,8 @@ def _llm_policy_factory(model: str | None = None,
         LLMRuleAssistWolfGuardAgent, LLMWolfGuardAgent,
         RuleFallbackBackend, make_chat_backend,
     )
-    if model or provider or base_url or api_key:
+    env_provider = os.getenv("WOLFBENCH_LLM_PROVIDER")
+    if model or provider or base_url or api_key or env_provider:
         backend = make_chat_backend(
             provider=provider, model=model, base_url=base_url,
             api_key=api_key, strict=strict,
@@ -168,8 +170,8 @@ TRACKS = {
     "oracle": "oracle_upper_bound",
     "llm": "llm_from_scratch",
     "qwen": "llm_from_scratch",
-    "llm_assisted": "llm_assisted_rule",
-    "qwen_assisted": "llm_assisted_rule",
+    "llm_assisted": "legacy_assisted_rule",
+    "qwen_assisted": "legacy_assisted_rule",
     "distilled": "simulator_trained_baseline",
 }
 

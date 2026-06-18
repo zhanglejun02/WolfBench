@@ -204,9 +204,8 @@ wolfbench evaluate --defense my_pkg.policies:MyDefense --split public_test
 | `rule` | `RuleWolfGuardPolicy` | z-score detector (canonical baseline to beat) |
 | `distilled` | `DistilledWolfGuardPolicy` | simulator-trained classifier baseline |
 | `oracle` | `OracleWolfGuardPolicy` | non-eligible upper bound; receives private ground-truth pressure |
-| `llm` | `LLMWolfGuardPolicy` | OpenAI-compatible LLM defender |
+| `llm` | `LLMWolfGuardPolicy` | OpenAI/OpenRouter-compatible from-scratch LLM defender |
 | `qwen` | `Qwen3-vLLM-WolfGuard` | local vLLM / Qwen3 from-scratch baseline |
-| `qwen_assisted` | `Qwen3-vLLM-assisted` | local vLLM / Qwen3 reranking the rule baseline |
 
 ### Trajectory dataset + Distilled-WolfGuard
 
@@ -288,11 +287,40 @@ python -m experiments.defense_benchmark.exp6_defense_leaderboard
 
 `experiments.defense_benchmark.exp6_defense_leaderboard` defaults to eligible non-LLM defenses
 (`noguard,random,rule`) plus the separate `oracle` upper bound because LLM
-defenses call the model once per day. Add `qwen` or `qwen_assisted` explicitly
-when you want to run those tracks:
+defenses call the model once per day. Add `qwen` explicitly when you want to run
+the local from-scratch LLM baseline:
 
 ```bash
 WOLFBENCH_EXP6_DEFENSES=noguard,qwen \
+WOLFBENCH_EXP6_N_GRID=1000 \
+python -m experiments.defense_benchmark.exp6_defense_leaderboard
+```
+
+### OpenRouter LLM baseline
+
+OpenRouter is supported through the same OpenAI-compatible `llm` baseline. The
+official LLM track is from-scratch: the model receives the public daily
+observation and directly chooses WolfGuard actions, without reranking the rule
+baseline.
+
+```bash
+pip install -e ".[llm,plot]"
+export OPENROUTER_API_KEY=sk-or-...
+export WOLFBENCH_LLM_PROVIDER=openrouter
+export WOLFBENCH_OPENROUTER_MODEL=openai/gpt-4o-mini
+
+wolfbench evaluate --defense llm \
+  --llm-provider openrouter \
+  --llm-model "$WOLFBENCH_OPENROUTER_MODEL" \
+  --scenario s1 --alphas 0.02 --seeds 1 --no-isolate
+```
+
+For Exp6, request `llm` as the eligible hosted-model row:
+
+```bash
+WOLFBENCH_EXP6_OUT=exp6_openrouter \
+WOLFBENCH_EXP6_DEFENSES=noguard,llm \
+WOLFBENCH_EXP6_UPPER_BOUNDS= \
 WOLFBENCH_EXP6_N_GRID=1000 \
 python -m experiments.defense_benchmark.exp6_defense_leaderboard
 ```
@@ -356,10 +384,10 @@ harmful-agent scaling claim solid before comparing defenses.
 
 | # | Module | Output folder | Default run | Main outputs |
 |---|--------|---------------|-------------|--------------|
-| 1 | `experiments.scaling_theory.exp1_alpha_scaling` | `outputs/scaling_theory/exp1_alpha_scaling/` | S1, N=`200,1000,5000`, α=`0..0.20`, seeds `1..20` | `data.csv`, `config.json`, `summary.json`, `p_collapse_vs_alpha.png`, `metrics_vs_alpha.png` |
-| 2 | `experiments.scaling_theory.exp2_society_size_scaling` | `outputs/scaling_theory/exp2_society_size_scaling/` | S1, N=`100..5000`, fine near-threshold α grid, seeds `1..20` | `data.csv`, `alpha_critical_summary.csv`, `summary.json`, `alpha_critical_vs_N.png`, `p_collapse_heatmap.png`, `transition_width_vs_N.png` |
+| 1 | `experiments.scaling_theory.exp1_alpha_scaling` | `outputs/scaling_theory/exp1_alpha_scaling/` | S1, N=`200,1000,5000`, α=`0..0.20`, seeds `1..50` | `data.csv`, `config.json`, `summary.json`, `p_collapse_vs_alpha.png`, `metrics_vs_alpha.png` |
+| 2 | `experiments.scaling_theory.exp2_society_size_scaling` | `outputs/scaling_theory/exp2_society_size_scaling/` | S1, N=`100,150,200,300,500,750,1000,1500,2000,3000,5000`, fine near-threshold α grid, seeds `1..50` | `data.csv`, `alpha_critical_summary.csv`, `summary.json`, `alpha_critical_vs_N.png`, `p_collapse_heatmap.png`, `transition_width_vs_N.png` |
 | 3 | `experiments.scaling_theory.exp3_centrality_placement` | `outputs/scaling_theory/exp3_centrality_placement/` | S2, α=`0.003`, N=`500,2000`, placements `random,high_degree`, seeds `1..20` | `data.csv`, `config.json`, `summary.json`, `centrality_compare.png` |
-| 4 | `experiments.scaling_theory.exp4_feedback_ablation` | `outputs/scaling_theory/exp4_feedback_ablation/` | S1, N=`1000`, α=`0.015`, feedback strengths `0..2.0`, seeds `1..20` | `data.csv`, `config.json`, `summary.json`, `feedback_compare.png` |
+| 4 | `experiments.scaling_theory.exp4_feedback_ablation` | `outputs/scaling_theory/exp4_feedback_ablation/` | S1, N=`1000`, α=`0.015`, feedback strengths `0..2.0`, seeds `1..50` | `data.csv`, `config.json`, `summary.json`, `feedback_compare.png` |
 | 5 | `experiments.scaling_theory.exp5_capacity_control` | `outputs/scaling_theory/exp5_capacity_control/` | S1, N=`200,1000,5000`, near-threshold α grid, per-agent vs fixed-total capacity, seeds `1..20` | `data.csv`, `alpha_critical_capacity_summary.csv`, `summary.json`, `alpha_critical_capacity_compare.png`, `p_collapse_capacity_compare.png` |
 | 6 | `experiments.scaling_theory.exp6_llm_n200_scaling` | `outputs/scaling_theory/exp6_llm_n200_scaling/` | S1, N=`200`, one LLM harmful leader, α sweep, seeds `1..20` | `data.csv`, `alpha_critical_summary.csv`, `summary.json`, `p_collapse_vs_alpha.png`, `metrics_vs_alpha.png` |
 
@@ -416,8 +444,9 @@ figure. If the Qwen leaderboard is still running, rerun the command after it
 finishes to add the Qwen supplement.
 
 If the summary figures look visually sparse, refresh the most compressed
-evidence after any active LLM run finishes. These commands add denser N grids to
-the scaling and mechanism checks while preserving the default protocols:
+evidence after any active LLM run finishes. Exp2 now uses the dense N grid by
+default; the command below is shown explicitly for reproducibility. The final
+two commands add denser N grids to the mechanism and capacity checks:
 
 ```bash
 WOLFBENCH_EXP2_N_GRID=100,150,200,300,500,750,1000,1500,2000,3000,5000 \
@@ -434,6 +463,18 @@ WOLFBENCH_EXP5_CAPACITY_N_GRID=200,500,1000,2000,5000 \
 python -m experiments.paper_figures
 ```
 
+For the law-focused claim, run the post-processing audit after Exp2 completes:
+
+```bash
+python -m experiments.scaling_theory.analyze_scaling_law
+python -m experiments.paper_figures
+```
+
+The main law wording should be "empirical finite-size scaling law under the S1
+protocol" only when `outputs/scaling_theory/scaling_law_audit/exp2_dense_law_summary.csv`
+reports stable exponent diagnostics. Otherwise use the weaker phrase
+"finite-size scaling trend".
+
 ### Defense Benchmark Track
 
 These scripts write to `outputs/defense_benchmark/` and are for evaluating
@@ -443,7 +484,7 @@ defense policies after the scaling protocol is fixed.
 |---|--------|---------------|-------------|--------------|
 | 5 | `experiments.defense_benchmark.exp5_wolfguard_defense` | `outputs/defense_benchmark/exp5_wolfguard_defense/` | S1, N=`1000`, α=`0..0.20`, seeds `1..5`, NoGuard vs built-in WolfGuard | `data.csv`, `config.json`, `summary.json`, `defense_shift.png` |
 | 6 | `experiments.defense_benchmark.calibrate_alpha_grid` | `outputs/defense_benchmark/alpha_calibration/` | S1-S4, N=`500,1000,2000`, broad α grid, seeds `1..5` | `data.csv`, `summary.csv`, `recommended_alpha_grid.csv`, `recommended_env.sh`, `summary.json`, `p_collapse_calibration.png` |
-| 7 | `experiments.defense_benchmark.exp6_defense_leaderboard` | `outputs/defense_benchmark/exp6/` by default | S1-S4, N=`500,1000,2000`, calibrated α grids, seeds `1..5`, defenses `noguard,random,rule` plus `oracle` | `data.csv`, `leaderboard.csv`, `leaderboard_by_scenario.csv`, `leaderboard_overall.csv`, `leaderboard.md`, `summary.json`, `leaderboard.png`, `threshold_shift.png`, `leaderboard_overall.png` |
+| 7 | `experiments.defense_benchmark.exp6_defense_leaderboard` | `outputs/defense_benchmark/exp6/` by default | S1-S4, N=`500,1000,2000`, calibrated α grids, seeds `1..30`, defenses `noguard,random,rule` plus `oracle` | `data.csv`, `leaderboard.csv`, `leaderboard_by_scenario.csv`, `leaderboard_overall.csv`, `leaderboard.md`, `summary.json`, `leaderboard.png`, `threshold_shift.png`, `leaderboard_overall.png` |
 | 8 | `experiments.defense_benchmark.analyze_qwen_baseline` | same `WOLFBENCH_EXP6_OUT` folder | Reads an exp6 output containing `qwen` | `qwen_analysis.json`, `qwen_analysis.md` |
 
 Run one defense experiment:
@@ -534,7 +575,6 @@ Defense tracks used by Exp6:
 | `rule_baseline` | `rule` |
 | `simulator_trained_baseline` | `distilled` |
 | `llm_from_scratch` | `llm`, `qwen` |
-| `llm_assisted_rule` | `llm_assisted`, `qwen_assisted` |
 | `control` | `noguard`, `random` |
 
 Exp6 keeps detailed per-scenario/N aggregates in `leaderboard_by_scenario.csv`
