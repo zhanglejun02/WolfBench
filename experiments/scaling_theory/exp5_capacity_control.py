@@ -7,7 +7,7 @@ after the environment's built-in ``sqrt(N / 1000)`` liquidity scaling, market
 capacity is held at the BASE_N level. This tests whether observed or missing
 ``alpha_c(N)`` scaling is an artifact of total capital/liquidity growth.
 
-Output: outputs/scaling_theory/exp5_capacity_control/
+Output: paperoutputs/scaling/exp5_capacity_control/
 """
 from __future__ import annotations
 

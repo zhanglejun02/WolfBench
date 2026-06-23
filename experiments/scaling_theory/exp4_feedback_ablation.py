@@ -5,7 +5,7 @@ Hold harmful ratio near the S1 critical region; sweep
 loop changes collapse probability rather than only increasing already-saturated
 loss severity.
 
-Output: outputs/scaling_theory/exp4_feedback_ablation/
+Output: paperoutputs/scaling/exp4_feedback_ablation/
 """
 from __future__ import annotations
 

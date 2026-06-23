@@ -1,16 +1,18 @@
 """Exp6 — WolfBench Defense Leaderboard.
 
 Question: when the same harmful population is held fixed, how do different
-defense policies compare on DefenseScore + ThresholdShift?
+defense policies compare on Threshold Protection Score (TPS)?
 
 Outputs:
-* ``outputs/defense_benchmark/exp6/data.csv``       — per-(defense, scenario, alpha, seed) row
-* ``outputs/defense_benchmark/exp6/leaderboard_by_scenario.csv`` — per-scenario/N aggregate
-* ``outputs/defense_benchmark/exp6/leaderboard.csv`` — display leaderboard
-* ``outputs/defense_benchmark/exp6/leaderboard_overall.csv`` — display leaderboard alias
-* ``outputs/defense_benchmark/exp6/summary.json``
-* ``outputs/defense_benchmark/exp6/leaderboard.png`` — DefenseScore by defense / scenario
-* ``outputs/defense_benchmark/exp6/threshold_shift.png``
+* ``paperoutputs/benchmark/exp6/data.csv``       — per-(defense, scenario, alpha, seed) row
+* ``paperoutputs/benchmark/exp6/leaderboard_by_scenario.csv`` — per-scenario/N aggregate
+* ``paperoutputs/benchmark/exp6/leaderboard.csv`` — display leaderboard
+* ``paperoutputs/benchmark/exp6/leaderboard_overall.csv`` — display leaderboard alias
+* ``paperoutputs/benchmark/exp6/summary.json``
+* ``paperoutputs/benchmark/exp6/leaderboard.png`` — TPS by defense / scenario
+* ``paperoutputs/benchmark/exp6/threshold_shift.png``
+* ``paperoutputs/benchmark/exp6/threshold_table.csv``
+* ``paperoutputs/benchmark/exp6/collapse_curves.png``
 """
 from __future__ import annotations
 
@@ -24,7 +26,12 @@ from experiments._common import (
     RunSpec, benchmark_exp_dir, run_grid, write_csv, write_json,
 )
 from wolfbench.defense import get_policy, get_track
-from wolfbench.metrics import bootstrap_ci, defense_score, rank_stability, threshold_shift
+from wolfbench.metrics import (
+    bootstrap_ci,
+    defense_score,
+    rank_stability,
+    threshold_protection_score,
+)
 from wolfbench.tracks.runner import calibrate_clean_baseline
 
 
@@ -78,7 +85,7 @@ def _llm_policy_kwargs() -> dict:
     }
 
 
-REQUESTED_DEFENSES = _dedupe(_env_list("WOLFBENCH_EXP6_DEFENSES", "noguard,random,rule"))
+REQUESTED_DEFENSES = _dedupe(_env_list("WOLFBENCH_EXP6_DEFENSES", "noguard,random,rule,topology_aware,distilled"))
 UPPER_BOUNDS = _dedupe(_env_list("WOLFBENCH_EXP6_UPPER_BOUNDS", "oracle"))
 DEFENSES = _dedupe(REQUESTED_DEFENSES + UPPER_BOUNDS)
 ELIGIBLE_DEFENSES = _competitive_defenses(REQUESTED_DEFENSES, UPPER_BOUNDS)
@@ -101,8 +108,8 @@ CI_BOOT = int(os.getenv("WOLFBENCH_EXP6_CI_BOOT", "2000"))
 OUT_NAME = os.getenv("WOLFBENCH_EXP6_OUT", "exp6")
 DISPLAY_SCENARIOS = ("s1", "s2", "s3", "s4")
 DISPLAY_FIELDNAMES = [
-    "Defense model", "S1", "S2", "S3", "S4",
-    "Avg DefenseScore", "Avg ThresholdShift", "Worst Score",
+    "Rank", "Defense", "Track", "TPS", "DeltaAlphaC/W0",
+    "CriticalDeltaP", "CleanCost", "FP", "Status",
 ]
 
 
@@ -126,10 +133,23 @@ def _build_specs(scenario: str, defense_name: str, n_society: int) -> list[RunSp
     return specs
 
 
-def _official_score(defense_name: str, raw_score: float) -> float:
+def _official_tps(defense_name: str, tps: float) -> float:
     if get_track(defense_name) == "control":
-        return min(float(raw_score), 0.0)
-    return float(raw_score)
+        return 0.0
+    return float(max(tps, 0.0))
+
+
+def _status(defense_name: str) -> str:
+    track = get_track(defense_name)
+    if defense_name in UPPER_BOUND_DEFENSES or track == "oracle_upper_bound":
+        return "upper bound"
+    if defense_name == "noguard":
+        return "reference"
+    if track == "control":
+        return "ineligible"
+    if track == "rule_baseline":
+        return "weak"
+    return "eligible"
 
 
 def _to_float(value, default: float = 0.0) -> float:
@@ -163,8 +183,9 @@ def _build_display_leaderboard(
     scenario_leaderboard: list[dict],
     defenses: list[str] | None = None,
     scenarios: tuple[str, ...] = DISPLAY_SCENARIOS,
+    ranked: bool = True,
 ) -> list[dict]:
-    """Build the public S1-S4 defense leaderboard from per-scenario rows."""
+    """Build the public S1-S4 TPS leaderboard from per-scenario rows."""
     by_defense_scenario: dict[tuple[str, str], list[dict]] = {}
     for row in scenario_leaderboard:
         defense_name = str(row.get("defense", row.get("Defense model", "")))
@@ -174,34 +195,38 @@ def _build_display_leaderboard(
 
     display_rows: list[dict] = []
     for defense_name in _defenses_in_order(scenario_leaderboard, defenses):
-        scenario_scores: dict[str, float | None] = {}
-        scenario_shifts: list[float] = []
+        tps_values: list[float] = []
+        shift_values: list[float] = []
+        delta_p_values: list[float] = []
+        clean_cost_values: list[float] = []
+        fp_values: list[float] = []
         for scenario in scenarios:
             rows = by_defense_scenario.get((defense_name, scenario), [])
             if rows:
-                scenario_scores[scenario] = _mean([
-                    _to_float(r.get("defense_score")) for r in rows
-                ])
-                scenario_shifts.append(_mean([
-                    _to_float(r.get("threshold_shift"), default=0.0) for r in rows
-                ]))
-            else:
-                scenario_scores[scenario] = None
+                tps_values.append(_mean([_to_float(r.get("tps_official")) for r in rows]))
+                shift_values.append(_mean([_to_float(r.get("delta_alpha_c_over_w0")) for r in rows]))
+                delta_p_values.append(_mean([_to_float(r.get("critical_band_delta_p")) for r in rows]))
+                clean_cost_values.append(_mean([_to_float(r.get("clean_cost_index")) for r in rows]))
+                fp_values.append(_mean([_to_float(r.get("clean_false_positive_rate")) for r in rows]))
 
-        available_scores = [v for v in scenario_scores.values() if v is not None]
+        if not tps_values:
+            continue
         display_row = {
-            "Defense model": defense_name,
-            "S1": scenario_scores["s1"] if scenario_scores["s1"] is not None else "",
-            "S2": scenario_scores["s2"] if scenario_scores["s2"] is not None else "",
-            "S3": scenario_scores["s3"] if scenario_scores["s3"] is not None else "",
-            "S4": scenario_scores["s4"] if scenario_scores["s4"] is not None else "",
-            "Avg DefenseScore": _mean(available_scores),
-            "Avg ThresholdShift": _mean(scenario_shifts),
-            "Worst Score": min(available_scores) if available_scores else 0.0,
+            "Rank": "",
+            "Defense": defense_name,
+            "Track": get_track(defense_name),
+            "TPS": _mean(tps_values),
+            "DeltaAlphaC/W0": _mean(shift_values),
+            "CriticalDeltaP": _mean(delta_p_values),
+            "CleanCost": _mean(clean_cost_values),
+            "FP": _mean(fp_values),
+            "Status": _status(defense_name),
         }
         display_rows.append(display_row)
 
-    display_rows.sort(key=lambda r: _to_float(r["Avg DefenseScore"]), reverse=True)
+    display_rows.sort(key=lambda r: _to_float(r["TPS"]), reverse=True)
+    for idx, row in enumerate(display_rows, 1):
+        row["Rank"] = idx if ranked else "-"
     return display_rows
 
 
@@ -217,14 +242,13 @@ def _write_markdown_display_table(handle, rows: list[dict], empty_message: str) 
     if not rows:
         handle.write(f"{empty_message}\n")
         return
-    handle.write("| Defense model | S1 | S2 | S3 | S4 | Avg DefenseScore | Avg ThresholdShift | Worst Score |\n")
-    handle.write("|---|---:|---:|---:|---:|---:|---:|---:|\n")
+    handle.write("| Rank | Defense | Track | TPS ↑ | Δαc/W0 ↑ | Critical ΔP ↑ | CleanCost ↓ | FP ↓ | Status |\n")
+    handle.write("|---:|---|---|---:|---:|---:|---:|---:|---|\n")
     for r in rows:
         handle.write(
-            f"| {r['Defense model']} | {_format_score(r['S1'])} | {_format_score(r['S2'])} | "
-            f"{_format_score(r['S3'])} | {_format_score(r['S4'])} | "
-            f"{_format_score(r['Avg DefenseScore'])} | {_format_shift(r['Avg ThresholdShift'])} | "
-            f"{_format_score(r['Worst Score'])} |\n"
+            f"| {r['Rank']} | {r['Defense']} | {r['Track']} | {_format_score(r['TPS'])} | "
+            f"{_format_shift(r['DeltaAlphaC/W0'])} | {_format_shift(r['CriticalDeltaP'])} | "
+            f"{_format_shift(r['CleanCost'])} | {_format_shift(r['FP'])} | {r['Status']} |\n"
         )
 
 
@@ -261,7 +285,7 @@ def _scenario_metric_means(
 
 
 def _seed_level_rank_rows(all_rows: list[dict]) -> list[dict]:
-    """Per-seed score rows used to estimate leaderboard rank stability."""
+    """Per-seed TPS rows used to estimate leaderboard rank stability."""
     rank_rows: list[dict] = []
     seeds = sorted({int(r["seed"]) for r in all_rows})
     scenarios = sorted({str(r["scenario_id"]) for r in all_rows})
@@ -270,6 +294,7 @@ def _seed_level_rank_rows(all_rows: list[dict]) -> list[dict]:
         for defense_name in DEFENSES:
             scores = []
             official_scores = []
+            raw_nets = []
             for scenario in scenarios:
                 alphas = _alphas_for(scenario)
                 for n_society in n_values:
@@ -289,17 +314,81 @@ def _seed_level_rank_rows(all_rows: list[dict]) -> list[dict]:
                     ]
                     if not rows_no or not rows_def:
                         continue
-                    score = defense_score(rows_no, rows_def, alphas=alphas)["defense_score"]
-                    scores.append(score)
-                    official_scores.append(_official_score(defense_name, score))
+                    score = threshold_protection_score(rows_no, rows_def, alphas=alphas)
+                    tps = _to_float(score.get("tps"))
+                    scores.append(tps)
+                    official_scores.append(_official_tps(defense_name, tps))
+                    raw_nets.append(_to_float(score.get("raw_net")))
             if scores:
                 rank_rows.append({
                     "seed": seed,
                     "defense": defense_name,
-                    "defense_score": float(np.mean(scores)),
+                    "tps": float(np.mean(scores)),
+                    "raw_net": float(np.mean(raw_nets)),
+                    "tps_official": float(np.mean(official_scores)),
                     "official_score": float(np.mean(official_scores)),
                 })
     return rank_rows
+
+
+def _write_threshold_table(rows: list[dict], path) -> list[dict]:
+    fields = ["Defense", "S1 alpha_c", "S1 delta_alpha_c", "S2 alpha_c", "S2 delta_alpha_c"]
+    out_rows: list[dict] = []
+    for defense_name in _defenses_in_order(rows, DEFENSES):
+        out = {"Defense": defense_name}
+        for scenario in ["s1", "s2"]:
+            selected = [r for r in rows if r["defense"] == defense_name and r["scenario"] == scenario]
+            alpha_values = [_to_float(r.get("alpha_c_def"), default=float("nan")) for r in selected]
+            delta_values = [_to_float(r.get("delta_alpha_c"), default=0.0) for r in selected]
+            alpha_values = [value for value in alpha_values if np.isfinite(value)]
+            out[f"{scenario.upper()} alpha_c"] = _mean(alpha_values) if alpha_values else ""
+            out[f"{scenario.upper()} delta_alpha_c"] = _mean(delta_values) if delta_values else 0.0
+        out_rows.append(out)
+    with open(path, "w", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fields)
+        writer.writeheader()
+        writer.writerows(out_rows)
+    return out_rows
+
+
+def _plot_collapse_curves(all_rows: list[dict], path) -> None:
+    scenarios = [scenario for scenario in ["s1", "s2"] if scenario in set(SCENARIOS)]
+    if not scenarios:
+        return
+    n_focus = 1000 if 1000 in N_GRID else N_GRID[0]
+    priority = [
+        "noguard", "rule", "mistral_risk", "llama_risk", "qwen_risk",
+        "deepseek_risk", "topology_aware", "oracle",
+    ]
+    defenses = [d for d in priority if d in DEFENSES]
+    defenses.extend([d for d in DEFENSES if d not in defenses])
+    fig, axes = plt.subplots(1, len(scenarios), figsize=(6 * len(scenarios), 4.4), squeeze=False)
+    for axis, scenario in zip(axes[0], scenarios):
+        for defense_name in defenses:
+            points = []
+            for alpha in _alphas_for(scenario):
+                selected = [
+                    row for row in all_rows
+                    if row["scenario_id"] == scenario
+                    and int(row["n_society"]) == int(n_focus)
+                    and row["defense"] == defense_name
+                    and float(row["alpha"]) == float(alpha)
+                ]
+                if selected:
+                    points.append((alpha, _mean([_to_float(row["collapse_rate"]) for row in selected])))
+            if points:
+                axis.plot([p[0] for p in points], [p[1] for p in points], marker="o", linewidth=1.7, label=defense_name)
+        axis.axhline(0.5, color="k", linestyle="--", linewidth=0.8, alpha=0.55)
+        axis.set_xscale("symlog", linthresh=1e-4)
+        axis.set_ylim(-0.05, 1.05)
+        axis.set_xlabel("alpha")
+        axis.set_ylabel("P(collapse)")
+        axis.set_title(f"{scenario.upper()} collapse curves, N={n_focus}")
+        axis.grid(alpha=0.25)
+        axis.legend(fontsize=7)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
 
 
 def main():
@@ -333,17 +422,24 @@ def main():
             for d in DEFENSES:
                 rows_d = [r for r in all_rows if r["scenario_id"] == scen
                           and int(r["n_society"]) == n_society and r["defense"] == d]
-                score = defense_score(rows_no, rows_d, alphas=alphas)
-                shift = threshold_shift(rows_no, rows_d, alphas)
+                legacy_score = defense_score(rows_no, rows_d, alphas=alphas)
+                tps_score = threshold_protection_score(rows_no, rows_d, alphas=alphas)
+                tps = _to_float(tps_score.get("tps"))
+                legacy_prefixed = {f"legacy_{key}": value for key, value in legacy_score.items()}
                 scenario_leaderboard.append({
                     "scenario": scen,
                     "n_society": n_society,
                     "defense": d,
                     "track": get_track(d),
                     "eligible": d in ELIGIBLE_DEFENSES,
-                    "official_score": _official_score(d, score["defense_score"]),
-                    **score,
-                    **shift,
+                    "status": _status(d),
+                    "tps_official": _official_tps(d, tps),
+                    "official_score": _official_tps(d, tps),
+                    "legacy_defense_score": legacy_score["defense_score"],
+                    "defense_score": legacy_score["defense_score"],
+                    "threshold_shift": tps_score.get("delta_alpha_c"),
+                    **legacy_prefixed,
+                    **tps_score,
                 })
 
     with open(out / "leaderboard_by_scenario.csv", "w", newline="") as f:
@@ -352,9 +448,9 @@ def main():
         for r in scenario_leaderboard:
             w.writerow(r)
 
-    display_leaderboard = _build_display_leaderboard(scenario_leaderboard, ELIGIBLE_DEFENSES)
-    control_leaderboard = _build_display_leaderboard(scenario_leaderboard, CONTROL_DEFENSES)
-    upper_bound_leaderboard = _build_display_leaderboard(scenario_leaderboard, UPPER_BOUND_DEFENSES)
+    display_leaderboard = _build_display_leaderboard(scenario_leaderboard, ELIGIBLE_DEFENSES, ranked=True)
+    control_leaderboard = _build_display_leaderboard(scenario_leaderboard, CONTROL_DEFENSES, ranked=False)
+    upper_bound_leaderboard = _build_display_leaderboard(scenario_leaderboard, UPPER_BOUND_DEFENSES, ranked=False)
     _write_display_csv(display_leaderboard, out / "leaderboard.csv")
     _write_display_csv(display_leaderboard, out / "leaderboard_overall.csv")
     _write_display_csv(control_leaderboard, out / "leaderboard_controls.csv")
@@ -366,7 +462,7 @@ def main():
     rank_stability_summary = (
         rank_stability(
             competitive_seed_rank_rows,
-            score_key="official_score",
+            score_key="tps_official",
             item_key="defense",
             sample_key="seed",
             n_boot=CI_BOOT,
@@ -377,35 +473,39 @@ def main():
     )
     for d in DEFENSES:
         rows = [r for r in scenario_leaderboard if r["defense"] == d]
-        scores = [r["defense_score"] for r in rows]
-        official_scores = [r["official_score"] for r in rows]
+        scores = [r["tps"] for r in rows]
+        official_scores = [r["tps_official"] for r in rows]
+        raw_nets = [r["raw_net"] for r in rows]
+        legacy_scores = [r["legacy_defense_score"] for r in rows]
         ci_low, ci_high = bootstrap_ci(scores, n_boot=CI_BOOT)
         official_ci_low, official_ci_high = bootstrap_ci(official_scores, n_boot=CI_BOOT)
         overall_metrics.append({
             "defense": d,
             "track": get_track(d),
             "eligible": d in ELIGIBLE_DEFENSES,
-            "official_score_mean": float(np.mean(official_scores)),
-            "official_score_ci_low": official_ci_low,
-            "official_score_ci_high": official_ci_high,
-            "defense_score_mean": float(np.mean(scores)),
-            "defense_score_std": float(np.std(scores)),
-            "defense_score_ci_low": ci_low,
-            "defense_score_ci_high": ci_high,
-            "threshold_shift_mean": float(np.mean([
-                r["threshold_shift"] if r["threshold_shift"] is not None else 0.0
-                for r in rows
-            ])),
-            "collapse_rate_mean": float(np.mean([r["def_collapse_rate"] for r in rows])),
-            "utility_loss_mean": float(np.mean([r["utility_loss"] for r in rows])),
-            "false_positive_rate_mean": float(np.mean([r["false_positive_rate"] for r in rows])),
+            "status": _status(d),
+            "tps_official_mean": float(np.mean(official_scores)),
+            "tps_official_ci_low": official_ci_low,
+            "tps_official_ci_high": official_ci_high,
+            "tps_mean": float(np.mean(scores)),
+            "tps_std": float(np.std(scores)),
+            "tps_ci_low": ci_low,
+            "tps_ci_high": ci_high,
+            "raw_net_mean": float(np.mean(raw_nets)),
+            "legacy_defense_score_mean": float(np.mean(legacy_scores)),
+            "delta_alpha_c_over_w0_mean": float(np.mean([r["delta_alpha_c_over_w0"] for r in rows])),
+            "critical_band_delta_p_mean": float(np.mean([r["critical_band_delta_p"] for r in rows])),
+            "clean_cost_index_mean": float(np.mean([r["clean_cost_index"] for r in rows])),
+            "false_positive_rate_mean": float(np.mean([r["clean_false_positive_rate"] for r in rows])),
         })
+
+    threshold_table = _write_threshold_table(scenario_leaderboard, out / "threshold_table.csv")
 
     with open(out / "leaderboard.md", "w") as f:
         f.write("# WolfBench Exp6 Defense Leaderboard\n\n")
         f.write(f"N={N_GRID}, alpha_grids={alpha_grids}, seeds={SEEDS}\n\n")
-        f.write("S1-S4 are mean raw DefenseScore values for each scenario, averaged across N. Avg ThresholdShift treats missing per-scenario threshold_shift values as 0.0.\n")
-        f.write("Competitive rank excludes control tracks and oracle upper bounds.\n\n")
+        f.write("TPS is the official nonnegative leaderboard score. It rewards threshold protection in the NoGuard near-critical band and applies a clean-market cost gate.\n")
+        f.write("RawNet and legacy DefenseScore remain diagnostic fields in CSV/JSON outputs. Competitive rank excludes controls and oracle upper bounds.\n\n")
         f.write("## Eligible Submissions\n\n")
         _write_markdown_display_table(f, display_leaderboard, "No eligible submissions were requested.\n")
         if control_leaderboard:
@@ -414,6 +514,14 @@ def main():
         if upper_bound_leaderboard:
             f.write("\n## Upper Bounds (Not Ranked)\n\n")
             _write_markdown_display_table(f, upper_bound_leaderboard, "No upper bounds were requested.\n")
+        f.write("\n## Threshold Table\n\n")
+        f.write("| Defense | S1 alpha_c | S1 delta alpha_c | S2 alpha_c | S2 delta alpha_c |\n")
+        f.write("|---|---:|---:|---:|---:|\n")
+        for row in threshold_table:
+            f.write(
+                f"| {row['Defense']} | {_format_shift(row['S1 alpha_c'])} | {_format_shift(row['S1 delta_alpha_c'])} | "
+                f"{_format_shift(row['S2 alpha_c'])} | {_format_shift(row['S2 delta_alpha_c'])} |\n"
+            )
 
     write_json({
         "requested_defenses": REQUESTED_DEFENSES,
@@ -428,25 +536,26 @@ def main():
         "display_leaderboard": display_leaderboard,
         "display_controls": control_leaderboard,
         "display_upper_bounds": upper_bound_leaderboard,
+        "threshold_table": threshold_table,
         "seed_rank_stability": rank_stability_summary,
         "seed_level_rank_rows": seed_rank_rows,
         "competitive_seed_level_rank_rows": competitive_seed_rank_rows,
     }, out / "summary.json")
 
-    # ---- Plot DefenseScore bars ----
+    # ---- Plot TPS bars ----
     fig, ax = plt.subplots(figsize=(9, 5))
-    ordered_defenses = [r["Defense model"] for r in display_leaderboard]
+    ordered_defenses = [r["Defense"] for r in display_leaderboard]
     width = min(0.8 / max(len(ordered_defenses), 1), 0.18)
     xlabels = [s.upper() for s in DISPLAY_SCENARIOS]
     x = np.arange(len(xlabels))
     for i, d in enumerate(ordered_defenses):
-        vals = _scenario_metric_means(scenario_leaderboard, d, "defense_score")
+        vals = _scenario_metric_means(scenario_leaderboard, d, "tps_official")
         ax.bar(x + (i - (len(ordered_defenses) - 1) / 2) * width, vals, width, label=d)
     ax.set_xticks(x)
     ax.set_xticklabels(xlabels)
-    ax.set_ylabel("Raw DefenseScore")
-    ax.axhline(0, color="k", lw=0.5)
-    ax.set_title("WolfBench Defense Leaderboard — DefenseScore by scenario")
+    ax.set_ylabel("TPS")
+    ax.set_ylim(bottom=0.0)
+    ax.set_title("WolfBench Defense Leaderboard — TPS by scenario")
     ax.legend()
     fig.tight_layout()
     fig.savefig(out / "leaderboard.png", dpi=150)
@@ -455,11 +564,11 @@ def main():
     # ---- Plot Threshold shift ----
     fig, ax = plt.subplots(figsize=(9, 5))
     for i, d in enumerate(ordered_defenses):
-        vals = _scenario_metric_means(scenario_leaderboard, d, "threshold_shift", none_as_zero=True)
+        vals = _scenario_metric_means(scenario_leaderboard, d, "delta_alpha_c_over_w0", none_as_zero=True)
         ax.bar(x + (i - (len(ordered_defenses) - 1) / 2) * width, vals, width, label=d)
     ax.set_xticks(x)
     ax.set_xticklabels(xlabels)
-    ax.set_ylabel("ThresholdShift  Δα_c")
+    ax.set_ylabel("Delta alpha_c / W0")
     ax.axhline(0, color="k", lw=0.5)
     ax.set_title("WolfBench — Critical-α shift relative to NoGuard")
     ax.legend()
@@ -469,25 +578,27 @@ def main():
 
     # ---- Overall leaderboard ----
     fig, ax = plt.subplots(figsize=(8, 4.5))
-    names = [r["Defense model"] for r in display_leaderboard]
-    vals = [r["Avg DefenseScore"] for r in display_leaderboard]
+    names = [r["Defense"] for r in display_leaderboard]
+    vals = [r["TPS"] for r in display_leaderboard]
     ax.bar(names, vals)
-    ax.axhline(0, color="k", lw=0.5)
-    ax.set_ylabel("Avg DefenseScore across S1-S4")
+    ax.set_ylim(bottom=0.0)
+    ax.set_ylabel("Avg TPS across S1-S4")
     ax.set_title("WolfBench Exp6 — Overall defense leaderboard")
     fig.tight_layout()
     fig.savefig(out / "leaderboard_overall.png", dpi=150)
     plt.close(fig)
 
+    _plot_collapse_curves(all_rows, out / "collapse_curves.png")
+
     print("\nLeaderboard written to", out)
     if control_leaderboard:
-        print("Controls not ranked:", ", ".join(r["Defense model"] for r in control_leaderboard))
+        print("Controls not ranked:", ", ".join(r["Defense"] for r in control_leaderboard))
     if upper_bound_leaderboard:
-        print("Upper bounds not ranked:", ", ".join(r["Defense model"] for r in upper_bound_leaderboard))
+        print("Upper bounds not ranked:", ", ".join(r["Defense"] for r in upper_bound_leaderboard))
     for r in display_leaderboard:
         print(
-            f"  {r['Defense model']:<12} avg={r['Avg DefenseScore']:>7.2f}  "
-            f"worst={r['Worst Score']:>7.2f}  Δα_c_avg={r['Avg ThresholdShift']}"
+            f"  {r['Defense']:<18} TPS={r['TPS']:>7.2f}  "
+            f"dalpha/W0={r['DeltaAlphaC/W0']:>7.3f}  critical_dP={r['CriticalDeltaP']:>7.3f}"
         )
 
 

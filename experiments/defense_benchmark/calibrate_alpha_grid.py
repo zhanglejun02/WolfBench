@@ -10,7 +10,7 @@ Environment overrides:
 * WOLFBENCH_CALIB_ALPHAS=0,0.0025,...
 * WOLFBENCH_CALIB_SEEDS=1,2,3,4,5
 
-Outputs: outputs/defense_benchmark/alpha_calibration/
+Outputs: paperoutputs/benchmark/alpha_calibration/
 """
 from __future__ import annotations
 

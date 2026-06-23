@@ -17,6 +17,10 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from wolfbench.agents.wolfguard import WolfGuardAgent, WolfGuardConfig
+from wolfbench.defense.advanced import (
+    CalibratedDistilledWolfGuardPolicy,
+    TopologyAwareWolfGuardPolicy,
+)
 from wolfbench.defense.distilled import DistilledWolfGuardPolicy
 from wolfbench.defense.policy import make_intervention
 
@@ -103,6 +107,7 @@ class OracleWolfGuardPolicy:
         oracle = summary.get("oracle_view", {}) or {}
         out = {}
         for asset, info in oracle.items():
+            active_count = float(info.get("active_harmful_count", 0.0))
             pressure = max(
                 float(info.get("active_harmful_share", 0.0)),
                 float(info.get("harmful_agent_share", 0.0)),
@@ -111,7 +116,10 @@ class OracleWolfGuardPolicy:
             if not info.get("is_attack_target", 0.0) and pressure <= 0.0:
                 continue
             risk = min(1.0, pressure / max(self.risk_block, 1e-9))
-            if pressure >= self.risk_block:
+            if info.get("is_attack_target", 0.0) and active_count > 0.0:
+                action = "block"
+                risk = max(risk, 1.0)
+            elif pressure >= self.risk_block:
                 action = "block"
             elif pressure >= self.risk_cooldown:
                 action = "cooldown"
@@ -132,11 +140,12 @@ def _llm_policy_factory(model: str | None = None,
                         api_key: str | None = None,
                         strict: bool | None = None,
                         display_name: str | None = None,
-                        assisted: bool = False):
+                        assisted: bool = False,
+                        risk_only: bool = False):
     """Return an ``LLMWolfGuardAgent`` wrapper. Imported lazily so users
     without an OpenAI client installed can still use rule baselines."""
     from wolfbench.agents.llm import (
-        LLMRuleAssistWolfGuardAgent, LLMWolfGuardAgent,
+        LLMRiskWolfGuardAgent, LLMRuleAssistWolfGuardAgent, LLMWolfGuardAgent,
         RuleFallbackBackend, make_chat_backend,
     )
     env_provider = os.getenv("WOLFBENCH_LLM_PROVIDER")
@@ -147,9 +156,13 @@ def _llm_policy_factory(model: str | None = None,
         )
     else:
         backend = RuleFallbackBackend()
-    agent_cls = LLMRuleAssistWolfGuardAgent if assisted else LLMWolfGuardAgent
+    if risk_only:
+        agent_cls = LLMRiskWolfGuardAgent
+    else:
+        agent_cls = LLMRuleAssistWolfGuardAgent if assisted else LLMWolfGuardAgent
     agent = agent_cls(backend=backend, config=WolfGuardConfig())
-    agent.name = display_name or f"LLM-WolfGuard({getattr(backend, 'model', 'rule_fallback')})"
+    label = "Risk-WolfGuard" if risk_only else "LLM-WolfGuard"
+    agent.name = display_name or f"{label}({getattr(backend, 'model', 'rule_fallback')})"
     return agent
 
 
@@ -163,6 +176,19 @@ class QwenVLLMWolfGuardPolicy:
     name: str = "Qwen3-vLLM-WolfGuard"
 
 
+class LLMRiskWolfGuardPolicy:
+    """Factory shim; instantiate via ``get_policy('llm_risk')``."""
+    name: str = "LLM-Risk-WolfGuard"
+
+
+OPEN_LLM_RISK_DEFAULTS = {
+    "deepseek_risk": ("openrouter", "deepseek/deepseek-chat-v3-0324", "DeepSeek-Risk-WolfGuard"),
+    "llama_risk": ("openrouter", "meta-llama/llama-3.1-8b-instruct", "Llama-Risk-WolfGuard"),
+    "mistral_risk": ("openrouter", "mistralai/mistral-7b-instruct", "Mistral-Risk-WolfGuard"),
+    "qwen_risk": ("vllm", "qwen3-8b", "Qwen-Risk-WolfGuard"),
+}
+
+
 TRACKS = {
     "noguard": "control",
     "random": "control",
@@ -170,9 +196,16 @@ TRACKS = {
     "oracle": "oracle_upper_bound",
     "llm": "llm_from_scratch",
     "qwen": "llm_from_scratch",
+    "llm_risk": "open_llm_risk",
+    "qwen_risk": "open_llm_risk",
+    "deepseek_risk": "open_llm_risk",
+    "llama_risk": "open_llm_risk",
+    "mistral_risk": "open_llm_risk",
     "llm_assisted": "legacy_assisted_rule",
     "qwen_assisted": "legacy_assisted_rule",
     "distilled": "simulator_trained_baseline",
+    "calibrated_distilled": "simulator_trained_calibrated",
+    "topology_aware": "submission",
 }
 
 
@@ -187,17 +220,22 @@ BASELINES = {
     "rule": RuleWolfGuardPolicy,
     "oracle": OracleWolfGuardPolicy,
     "distilled": DistilledWolfGuardPolicy,
+    "calibrated_distilled": CalibratedDistilledWolfGuardPolicy,
+    "topology_aware": TopologyAwareWolfGuardPolicy,
 }
 
 
 def get_policy(name: str, **kwargs):
     """Instantiate a baseline by short name.
 
-    ``name`` ∈ ``{noguard, random, rule, oracle, distilled, llm, qwen,
-    llm_assisted, qwen_assisted}``. ``llm`` accepts
+    ``name`` ∈ ``{noguard, random, rule, oracle, distilled,
+    calibrated_distilled, topology_aware, llm, qwen, llm_risk, qwen_risk,
+    deepseek_risk, llama_risk, mistral_risk, llm_assisted,
+    qwen_assisted}``. ``llm`` accepts
     a ``model`` kwarg (defaults to the deterministic rule fallback). ``qwen``
-    uses the local vLLM OpenAI-compatible endpoint by default. ``distilled``
-    accepts ``model_path`` or reads ``WOLFBENCH_DISTILLED_MODEL``.
+    uses the local vLLM OpenAI-compatible endpoint by default. ``distilled`` and
+    ``calibrated_distilled`` accept ``model_path`` or read
+    ``WOLFBENCH_DISTILLED_MODEL``.
     """
     key = name.lower()
     kwargs = {k: v for k, v in kwargs.items() if v is not None}
@@ -209,6 +247,26 @@ def get_policy(name: str, **kwargs):
             api_key=kwargs.get("api_key"),
             strict=kwargs.get("strict"),
             assisted=key.endswith("_assisted"),
+        )
+    if key == "llm_risk":
+        return _llm_policy_factory(
+            model=kwargs.get("model"),
+            provider=kwargs.get("provider"),
+            base_url=kwargs.get("base_url"),
+            api_key=kwargs.get("api_key"),
+            strict=kwargs.get("strict"),
+            risk_only=True,
+        )
+    if key in OPEN_LLM_RISK_DEFAULTS:
+        default_provider, default_model, display_name = OPEN_LLM_RISK_DEFAULTS[key]
+        return _llm_policy_factory(
+            model=kwargs.get("model") or default_model,
+            provider=kwargs.get("provider") or default_provider,
+            base_url=kwargs.get("base_url"),
+            api_key=kwargs.get("api_key"),
+            strict=True if kwargs.get("strict") is None else kwargs.get("strict"),
+            display_name=display_name,
+            risk_only=True,
         )
     if key in {"qwen", "qwen_assisted"}:
         model = kwargs.get("model") or "qwen3-8b"
@@ -226,8 +284,8 @@ def get_policy(name: str, **kwargs):
     if key not in BASELINES:
         raise ValueError(
             f"Unknown defense baseline '{name}'. "
-            f"Available: {sorted(BASELINES) + ['llm', 'qwen', 'llm_assisted', 'qwen_assisted']}"
+            f"Available: {sorted(BASELINES) + ['llm', 'qwen', 'llm_risk', *sorted(OPEN_LLM_RISK_DEFAULTS), 'llm_assisted', 'qwen_assisted']}"
         )
-    if key != "distilled":
+    if key not in {"distilled", "calibrated_distilled"}:
         kwargs.pop("model_path", None)
     return BASELINES[key](**kwargs)

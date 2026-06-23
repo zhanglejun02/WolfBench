@@ -17,6 +17,28 @@ def test_episode_runs(scenario):
     assert res.metrics.max_collapse_score >= 0.0
 
 
+def test_s3_uses_intraday_clearing_steps():
+    scen = load_scenario("s3")
+    env = WolfBenchEnv(scen, n_society=200, alpha=0.05, seed=1)
+    assert env.intraday_steps == 12
+    res = env.run()
+    assert res.config_snapshot["intraday_steps"] == 12
+    assert res.metrics.primary_metric == "spoof_liquidity_failure"
+    assert res.metrics.cancel_rate_max >= 0.0
+    assert res.metrics.spoof_depth_to_liquidity_max >= 0.0
+    assert res.metrics.primary_failure_score_max >= 0.0
+
+
+def test_s4_reports_mechanism_metrics():
+    scen = load_scenario("s4")
+    res = WolfBenchEnv(scen, n_society=200, alpha=0.05, seed=2).run()
+    assert res.metrics.primary_metric == "fake_liquidity_failure"
+    assert res.metrics.wash_share_max >= 0.0
+    assert res.metrics.volume_distortion_max >= 0.0
+    assert res.metrics.withdrawal_loss_max >= 0.0
+    assert res.metrics.primary_failure_score_max >= 0.0
+
+
 def test_pump_dump_collapse_more_likely_with_more_harmful():
     scen = load_scenario("s1")
     low = WolfBenchEnv(scen, n_society=500, alpha=0.0, seed=42).run()

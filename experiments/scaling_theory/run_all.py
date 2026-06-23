@@ -17,6 +17,7 @@ EXPERIMENTS = [
     "experiments.scaling_theory.exp5_capacity_control",
     "experiments.scaling_theory.exp7_cross_mechanism_threshold",
     "experiments.scaling_theory.exp8_sensitivity_audit",
+    "experiments.scaling_theory.exp12_canonical_scaling",
 ]
 
 

@@ -20,6 +20,8 @@ import os
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable, Any
 
+import numpy as np
+
 from wolfbench.agents.attackers import (
     PumpAndDumpLeader, Finfluencer,
 )
@@ -295,6 +297,13 @@ _WOLFGUARD_SYS = (
     "JSON only. Do not include thinking, markdown, code fences, or explanation."
 )
 
+_WOLFGUARD_RISK_SYS = (
+    "You are LLM-Risk-WolfGuard in WolfBench. You do not choose actions. "
+    "For each asset, output JSON only in this shape: "
+    "{asset_id: {manipulation_risk: float 0..1, cascade_risk: float 0..1, confidence: float 0..1}}. "
+    "Use only the public summary and risk features. Do not include thinking, markdown, code fences, or explanation."
+)
+
 
 @dataclass
 class LLMPumpLeader(PumpAndDumpLeader):
@@ -416,6 +425,83 @@ class LLMWolfGuardAgent(WolfGuardAgent):
                 "components": feature,
             }
         return actions
+
+
+@dataclass
+class LLMRiskWolfGuardAgent(WolfGuardAgent):
+    """Risk-only LLM wrapper with evaluator-owned action thresholds."""
+
+    backend: LLMBackend = field(default_factory=RuleFallbackBackend)
+    warning_threshold: float = 0.55
+    cooldown_threshold: float = 0.72
+    block_threshold: float = 1.10
+    allow_block: bool = False
+
+    def decide(self, day: int, system_summary: dict) -> dict:
+        public_summary = {k: v for k, v in system_summary.items() if k != "oracle_view"}
+        risk_features = {}
+        for asset, market in public_summary["market"].items():
+            social = public_summary["social"].get(asset, {})
+            risk_features[asset] = self.risk_score(asset, market, social)
+
+        plan = {}
+        if not isinstance(self.backend, RuleFallbackBackend):
+            plan = self.backend.chat_json(
+                _WOLFGUARD_RISK_SYS,
+                json.dumps({
+                    "day": day,
+                    "system_summary": public_summary,
+                    "risk_features": risk_features,
+                    "action_thresholds": {
+                        "warning": self.warning_threshold,
+                        "cooldown": self.cooldown_threshold,
+                        "block_enabled": self.allow_block,
+                    },
+                }),
+            )
+
+        actions = {}
+        for asset in public_summary["market"]:
+            fallback_risk = float(risk_features.get(asset, {}).get("risk", 0.0))
+            estimate = (plan or {}).get(asset, {})
+            if isinstance(estimate, dict) and estimate:
+                manipulation = _bounded_float(estimate.get("manipulation_risk", fallback_risk))
+                cascade = _bounded_float(estimate.get("cascade_risk", fallback_risk))
+                confidence = _bounded_float(estimate.get("confidence", 0.5))
+                risk = float(np.clip((0.60 * manipulation + 0.40 * cascade) * (0.5 + 0.5 * confidence), 0.0, 1.0))
+                components = {
+                    "manipulation_risk": manipulation,
+                    "cascade_risk": cascade,
+                    "confidence": confidence,
+                    "risk": risk,
+                }
+            else:
+                risk = float(np.clip(fallback_risk, 0.0, 1.0))
+                components = {**risk_features.get(asset, {}), "risk": risk, "llm_fallback": 1.0}
+
+            action = "none"
+            if self.allow_block and risk >= self.block_threshold:
+                action = "block"
+            elif risk >= self.cooldown_threshold:
+                action = "cooldown"
+            elif risk >= self.warning_threshold:
+                action = "warning"
+            actions[asset] = {
+                "asset": asset,
+                "action": action,
+                "risk": risk,
+                "reason": "llm_risk_wolfguard",
+                "components": components,
+            }
+        return actions
+
+
+def _bounded_float(value: Any, default: float = 0.0) -> float:
+    try:
+        out = float(value)
+    except (TypeError, ValueError):
+        return default
+    return float(np.clip(out, 0.0, 1.0))
 
 
 @dataclass

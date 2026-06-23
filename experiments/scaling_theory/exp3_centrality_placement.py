@@ -4,7 +4,7 @@ At fixed alpha, plug harmful finfluencers into either random nodes or
 high-degree hubs, and compare collapse outcomes. Demonstrates the
 "centrality-harm elasticity" effect (paper §10 Social Experiment 1).
 
-Output: outputs/scaling_theory/exp3_centrality_placement/
+Output: paperoutputs/scaling/exp3_centrality_placement/
 """
 from __future__ import annotations
 

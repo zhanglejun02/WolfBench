@@ -51,6 +51,21 @@ WOLFBENCH_EXP7_SEEDS=$(seq -s, 1 50) \
 python -m experiments.scaling_theory.exp7_cross_mechanism_threshold
 ```
 
+Canonical S1-S4 scaling evidence:
+
+```bash
+WOLFBENCH_EXP12_SEEDS=$(seq -s, 1 30) \
+WOLFBENCH_EXP12_N_GRID=500,1000,2000 \
+python -m experiments.scaling_theory.exp12_canonical_scaling
+```
+
+Use Exp12 for paper-facing four-scenario claims. It reports one
+scenario-aligned `primary_failure` curve per scenario/N: generic collapse for
+S1/S2, spoofing/liquidity failure for S3, and fake-liquidity failure for S4.
+Treat S2 as a low-count threshold case at N=`500,1000,2000`: the visible jump is
+the first-finfluencer boundary, while S3/S4 require locally dense alpha grids
+around their mechanism thresholds.
+
 Sensitivity audit:
 
 ```bash
@@ -68,9 +83,10 @@ python -m experiments.defense_benchmark.exp6_defense_leaderboard
 
 ## Reporting Requirements
 
-- Use `alpha_critical_summary.csv` and `alpha_critical_by_mechanism.csv` for the
-  main `alpha_c` claims.
-- Use `outputs/scaling_theory/scaling_law_audit/exp2_dense_law_summary.csv` for
+- Use Exp12 `alpha_c_by_scenario_n.csv`, `failure_curves.csv`, and
+  `scenario_law_summary.csv` for paper-facing S1-S4 mechanism-aligned scaling
+  claims. Use Exp2 `alpha_critical_summary.csv` for the dense S1 finite-size law.
+- Use `paperoutputs/scaling/scaling_law_audit/exp2_dense_law_summary.csv` for
   the law claim. Report all-N and `N >= 500` exponents, bootstrap exponent CIs,
   leave-one-N-out ranges, and the evidence grade.
 - Use Wilson intervals for binary `P(collapse)` plots.

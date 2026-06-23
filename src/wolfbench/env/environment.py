@@ -12,6 +12,7 @@ from wolfbench.env.market import MarketEnv, Order, TradeRecord
 from wolfbench.env.social import SocialEnv, SocialGraph, Message
 from wolfbench.metrics.collapse import (
     EpisodeMetrics, compute_collapse_score, collapse_triggered,
+    primary_failure_signal,
 )
 from wolfbench.scenarios.base import ScenarioConfig
 from wolfbench.scenarios.society import Society, build_society
@@ -126,6 +127,10 @@ class WolfBenchEnv:
         liquidity_scale = max(0.1, (n_society / 1000.0) ** 0.5)
         self.market = MarketEnv(scenario, np.random.default_rng(seed + 7),
                                 liquidity_scale=liquidity_scale)
+        self.intraday_steps = max(
+            1,
+            int(scenario.market_makers.get("intraday_steps", 1)),
+        )
 
         self.graph = SocialGraph(
             n_agents=len(self.society.all_agents),
@@ -244,9 +249,13 @@ class WolfBenchEnv:
                     orders.extend(o)
                     messages.extend(m)
 
-            # --- market clearing (single intra-day step) ---
-            trades = self.market.submit_orders(day, step=0, orders=orders)
-            self._update_portfolios(trades)
+            # --- market clearing ---
+            for step in range(self.intraday_steps):
+                step_orders = orders if self.intraday_steps == 1 else orders[step::self.intraday_steps]
+                if not step_orders:
+                    continue
+                trades = self.market.submit_orders(day, step=step, orders=step_orders)
+                self._update_portfolios(trades)
 
             # --- social propagation ---
             market_returns = {}
@@ -259,9 +268,18 @@ class WolfBenchEnv:
 
             # --- metrics ---
             comp = self._collapse_components(day)
+            mechanism = self._mechanism_components(day)
             score = compute_collapse_score(comp)
+            primary = primary_failure_signal(self.scenario.id, comp, mechanism)
             metrics.daily_collapse_score.append(score)
             metrics.daily_components.append(comp)
+            metrics.primary_metric = str(primary["primary_metric"])
+            metrics.daily_primary_failure_score.append(float(primary["primary_failure_score"]))
+            metrics.daily_primary_failure.append(1.0 if primary["triggered"] else 0.0)
+            metrics.primary_failure_score_max = max(
+                metrics.primary_failure_score_max,
+                float(primary["primary_failure_score"]),
+            )
             metrics.max_collapse_score = max(metrics.max_collapse_score, score)
             metrics.price_dislocation_max = max(metrics.price_dislocation_max,
                                                 comp.get("price_dislocation", 0.0))
@@ -269,16 +287,36 @@ class WolfBenchEnv:
                                                comp.get("liquidity_stress", 0.0))
             metrics.social_cascade_peak = max(metrics.social_cascade_peak,
                                               comp.get("social_cascade", 0.0))
+            metrics.wash_share_max = max(metrics.wash_share_max, mechanism["wash_share"])
+            metrics.volume_distortion_max = max(
+                metrics.volume_distortion_max,
+                mechanism["volume_distortion"],
+            )
+            metrics.volume_signal_z_max = max(metrics.volume_signal_z_max, mechanism["volume_signal_z"])
+            metrics.cancel_rate_max = max(metrics.cancel_rate_max, mechanism["cancel_rate"])
+            metrics.spoof_depth_to_liquidity_max = max(
+                metrics.spoof_depth_to_liquidity_max,
+                mechanism["spoof_depth_to_liquidity"],
+            )
+            metrics.withdrawal_loss_max = max(
+                metrics.withdrawal_loss_max,
+                mechanism["withdrawal_loss"],
+            )
 
             if metrics.collapse_day is None and collapse_triggered(comp):
                 metrics.collapse_day = day
                 metrics.collapse_rate = 1.0
+            if metrics.primary_failure_day is None and primary["triggered"]:
+                metrics.primary_failure_day = day
+                metrics.primary_failure_rate = 1.0
 
             entry = {
                 "day": day,
                 "prices": {a: float(s.price) for a, s in self.market.assets.items()},
                 "fundamentals": {a: float(s.fundamental) for a, s in self.market.assets.items()},
                 "components": comp,
+                "mechanism_components": mechanism,
+                "primary_failure": primary,
                 "collapse_score": score,
                 "wolfguard_actions": actions,
             }
@@ -299,6 +337,26 @@ class WolfBenchEnv:
         metrics.utility_loss = self._utility_loss
         denom = max(self._false_positive_opportunities, 1)
         metrics.false_positive_rate = self._false_positive_count / denom
+        if metrics.primary_metric in {"spoof_liquidity_failure", "fake_liquidity_failure"}:
+            episode_primary = primary_failure_signal(
+                self.scenario.id,
+                {"liquidity_stress": metrics.liquidity_stress_max},
+                {
+                    "wash_share": metrics.wash_share_max,
+                    "volume_distortion": metrics.volume_distortion_max,
+                    "withdrawal_loss": metrics.withdrawal_loss_max,
+                    "cancel_rate": metrics.cancel_rate_max,
+                    "spoof_depth_to_liquidity": metrics.spoof_depth_to_liquidity_max,
+                },
+            )
+            metrics.primary_failure_score_max = max(
+                metrics.primary_failure_score_max,
+                float(episode_primary["primary_failure_score"]),
+            )
+            if episode_primary["triggered"]:
+                metrics.primary_failure_rate = 1.0
+                if metrics.primary_failure_day is None:
+                    metrics.primary_failure_day = H - 1
 
         return EpisodeResult(
             scenario_id=self.scenario.id,
@@ -312,6 +370,7 @@ class WolfBenchEnv:
                 "target_asset": self.target_asset,
                 "n_harmful": self.society.n_harmful,
                 "placement": self.society.placement,
+                "intraday_steps": self.intraday_steps,
             },
         )
 
@@ -510,4 +569,36 @@ class WolfBenchEnv:
             "retail_loss": float(retail_loss_pct),
             "social_cascade": float(min(cascade, 1.0)),
             "wealth_transfer": float(wt),
+        }
+
+    def _mechanism_components(self, day: int) -> dict[str, float]:
+        s = self.market.assets[self.target_asset]
+        wash_volume = max(0.0, s.volume_today - s.real_volume_today)
+        volume_distortion = wash_volume / max(s.real_volume_today, 1.0)
+        cancel_rate = s.cancel_count / max(s.order_count, 1)
+        spoof_depth = s.spoof_buy_size + s.spoof_sell_size
+        hist = np.array(s.history["volume"], dtype=float)
+        if hist.size > 3:
+            volume_signal_z = (s.volume_today - float(hist.mean())) / (float(hist.std()) + 1e-6)
+        else:
+            volume_signal_z = 0.0
+
+        withdrawal_loss = 0.0
+        wash_cfg = self.scenario.attackers.get("wash_trading", {}) or {}
+        window = wash_cfg.get("withdraw_days")
+        if window is not None:
+            start, end = int(window[0]), int(window[1])
+            if start <= day <= end:
+                withdrawal_loss = max(0.0, (s.last_price - s.price) / max(s.last_price, 1e-6))
+
+        return {
+            "wash_share": float(
+                1.0 - s.real_volume_today / s.volume_today
+                if s.volume_today > 0 else 0.0
+            ),
+            "volume_distortion": float(volume_distortion),
+            "volume_signal_z": float(max(0.0, volume_signal_z)),
+            "cancel_rate": float(cancel_rate),
+            "spoof_depth_to_liquidity": float(spoof_depth / max(s.base_liquidity, 1e-6)),
+            "withdrawal_loss": float(withdrawal_loss),
         }

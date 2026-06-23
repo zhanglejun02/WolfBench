@@ -1,0 +1,991 @@
+\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
+\usepackage[submission]{aaai2027}  % DO NOT CHANGE THIS
+% The serif, sans-serif, and monospaced fonts are loaded automatically by
+% aaai2027.sty (newtxtext, helvet, courier). DO NOT add \usepackage{times},
+% \usepackage{helvet}, \usepackage{courier}, or any other font package.
+\usepackage[hyphens]{url}  % DO NOT CHANGE THIS
+\usepackage{graphicx} % DO NOT CHANGE THIS
+\urlstyle{rm} % DO NOT CHANGE THIS
+\def\UrlFont{\rm}  % DO NOT CHANGE THIS
+\usepackage{natbib}  % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\usepackage{caption} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\frenchspacing  % DO NOT CHANGE THIS
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\pdfinfo{
+/TemplateVersion (2027.1)
+}
+
+\setcounter{secnumdepth}{0}
+
+\newcommand{\alphac}{\alpha_{\mathrm{c}}}
+\newcommand{\collapse}{\mathrm{CollapseScore}}
+\newcommand{\shift}{\Delta\alpha_{\mathrm{c}}}
+\newcommand{\tps}{\mathrm{TPS}}
+\newcommand{\rawnet}{\mathrm{RawNet}}
+\newcommand{\figureplaceholder}[2]{%
+\begin{center}
+\fbox{\begin{minipage}[c][#1][c]{0.96\linewidth}
+\centering\small #2
+\end{minipage}}
+\end{center}}
+
+\title{When Harm Scales: Measuring Critical Regimes in Financial Agent Societies}
+
+\author{
+    Anonymous Submission
+}
+\affiliations{
+}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+AI agents are moving from isolated assistants to interconnected participants in
+markets, platforms, and organizations, where small harmful minorities can alter
+shared state and induce correlated behavior from benign agents. We study this
+failure mode as harmful-agent scaling. The central claim is that harmful-agent
+safety has a scaling dimension: the key quantity is not only whether an
+individual agent is harmful, but the critical population fraction at which
+society-level collapse emerges. We formalize this as a finite-size
+critical-regime measurement problem and introduce testable estimands rather
+than a claim of universal phase transition: the critical harmful-agent ratio
+\(\alphac(N)\), transition width, mechanism-specific thresholds, structural
+threshold shifts, and defense-induced threshold shift. WolfBench is the
+instrument for measuring these quantities: a controlled financial agent-society
+environment that sweeps harmful-agent ratios, society sizes, manipulation
+mechanisms, and defenses under repeated seeds. This reframes agent safety from
+isolated-agent evaluation toward collective-risk measurement. For defense
+evaluation, we introduce Threshold Protection Score (\(\tps\)), which gives
+most weight to positive threshold shift and collapse reduction in the
+near-critical regime, adds a smaller severity-reduction term, and applies
+bounded clean-market and false-positive cost gates.
+\end{abstract}
+
+\section{Introduction}
+
+AI agents are moving from isolated assistants to interconnected participants in
+workflows, markets, platforms, and organizations. In these settings, actions
+are coupled through shared state. One agent's message can change what others
+believe; one agent's trade can change the market observed by others; and a
+platform-level intervention can reshape the information and action space faced
+by many agents simultaneously. Harm is therefore not only a property of one
+request, one answer, or one trajectory. A small harmful minority can change the
+shared environment, causing benign agents to amplify the original signal and
+produce system-level damage.
+
+This paper studies this collective failure mode through the lens of
+\emph{harmful-agent scaling}. The basic question is simple: as the fraction
+\(\alpha\) of harmful agents increases in a finite agent society, how does the
+probability of collapse change? This question adds a scaling dimension to
+harmful-agent safety. In many evaluations, harmfulness is measured at the level
+of a single agent: whether it follows an unsafe instruction, performs a harmful
+task, or violates a rule. Those evaluations are necessary, but they miss a
+different quantity: the critical population fraction at which individually
+small harmful actions become a society-level failure. Even if each individual
+action is small, a coordinated harmful minority can create correlated exposure,
+drive correlated benign behavior, and move the whole system into a risky
+regime.
+
+Financial agent societies make this problem concrete. Harmful agents may
+manipulate social exposure, distort perceived demand, or occupy influential
+positions in a communication graph. Benign retail agents then convert public
+signals into trades. Market impact can feed back into the shared information
+state: price movement changes what agents believe, while spreading messages
+induce more correlated behavior. The question is therefore not only whether a
+harmful action can be detected, but whether the society has a measurable
+critical regime in which a small change in adversarial composition causes a
+large change in collapse probability.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{Figures/figure1_killer_scaling.pdf}
+\caption{Overview of harmful-agent population scaling in WolfBench. The
+benchmark treats collective harmful-agent safety as a finite-size critical
+regime: harmful minorities create shared exposure, benign agents amplify that
+pressure through social and market feedback, and primary-failure probability
+changes sharply near an estimated critical fraction \(\alphac(N)\). Panel A
+summarizes the closed-loop mechanism. Panel B shows the S1 finite-size
+transition curves used to estimate critical behavior. Panels C and D summarize
+how \(\alphac(N)\) and transition width vary across scenarios and society sizes.
+Panel E states the \(\tps\) defense objective schematically: useful defenses
+should shift the failure transition right while protecting the near-critical
+band under cost constraints.}
+\label{fig:overview}
+\end{figure*}
+
+The contribution is therefore not merely a new benchmark. We argue that
+harmful-agent safety should be measured as a finite-size critical-regime
+problem. WolfBench is the measurement instrument that makes this claim testable
+in a controlled financial agent society. It lets us sweep the harmful-agent
+ratio, repeat controlled episodes over random seeds, estimate collapse
+probability curves, and compare defenses by whether they shift the critical
+harmful-agent ratio upward. This reframes agent safety from isolated-agent
+evaluation toward collective-risk measurement.
+
+Our contributions are:
+\begin{itemize}
+    \item We identify a scaling dimension of harmful-agent safety: beyond
+    individual harmfulness, the key society-level quantity is the critical
+    harmful-agent fraction at which collapse emerges.
+    \item We formulate harmful-agent scaling as a finite-size critical-regime
+    measurement problem with estimands for collapse probability, critical
+    ratio, transition width, mechanism heterogeneity, and structural threshold
+    shift.
+    \item We introduce WolfBench as a controlled measurement instrument that
+    instantiates social, market, and intervention feedback loops so the scaling
+    estimands can be measured reproducibly.
+    \item We define Threshold Protection Score (\(\tps\)), a critical-regime
+    defense metric that combines positive threshold shift, near-threshold
+    collapse reduction, and severity reduction under explicit clean-market and
+    false-positive cost gates.
+\end{itemize}
+
+\section{Problem Setup}
+
+We consider a finite-horizon agent society with \(N\) agents and horizon
+\(T\). For a finite society, the benchmark instantiates
+\(K\in\{0,\ldots,N\}\) harmful agents and writes \(\alpha=K/N\). When we refer
+to an \(\alpha\)-grid, each requested ratio is implemented by the nearest
+feasible harmful-agent count. The remaining agents are benign retail agents and
+market participants. A mechanism \(m\in\mathcal{M}\) specifies the harmful
+behavior family.
+
+At each time \(t\), the environment has a market state \(x_t\), a social state
+\(g_t\), and agent portfolios \(p_t\). Agents observe public summaries of this
+state and choose messages or trades. Let \(\mu_b\) denote the benign-agent
+policy class, let \(\mu_h^m\) denote the harmful policy for mechanism \(m\), and
+let \(\pi\) denote a defense policy. The transition is stochastic:
+\[
+    (x_{t+1},g_{t+1},p_{t+1}) \sim
+    \mathcal{P}_m(\cdot \mid x_t,g_t,p_t,N,K,\mu_b,\mu_h^m,\pi),
+\]
+with \(\alpha=K/N\). The no-defense baseline is \(\pi=\varnothing\).
+
+Collapse is an episode-level event. Let \(z_t\in\mathbb{R}_+^q\) collect
+nonnegative risk components such as price dislocation, liquidity stress, retail
+loss, social cascade size, and wealth transfer. WolfBench reports a continuous
+severity score
+\[
+    S_t = w^\top z_t,
+\]
+but the generic binary collapse event is triggered by calibrated component
+thresholds:
+\[
+    C =
+    \mathbf{1}\left\{
+    \exists t\leq T,\ \exists j\in\{1,\ldots,q\}: z_{t,j}\geq \tau_j
+    \right\}.
+\]
+The scalar score is used for continuous severity reporting; the generic binary
+event is used for S1/S2 threshold estimation and remains a diagnostic field for
+all mechanisms. For the paper-facing S3 and S4 mechanism audits, the fitted
+binary event is instead the scenario-aligned primary failure signal: S3 uses a
+spoofing/liquidity-failure event and S4 uses a fake-liquidity event. Unless
+otherwise stated, \(C\) denotes the primary binary event used for the estimand
+being fit. The main object of measurement is therefore
+\[
+    p_m(N,\alpha;\pi)=\Pr(C=1\mid N,K,m,\mu_b,\mu_h^m,\pi).
+\]
+The probability is taken over random initial conditions, social-graph
+realizations, harmful-agent placement, stochastic agent decisions, and
+exogenous market noise.
+
+For a fixed mechanism and defense policy, the critical harmful-agent ratio is
+the midpoint of a fitted primary-event response curve:
+\[
+    \alphac^m(N;\pi)
+    = \inf\{\alpha: p_m(N,\alpha;\pi)\geq 1/2\}.
+\]
+Because empirical rates can be non-monotone under finite sampling noise, we
+treat \(\alphac\) as a response-curve estimand rather than a pointwise property
+of raw rates. In experiments, raw event rates are summarized by a monotone or
+logistic response fit, and uncertainty is estimated from repeated seeds. The
+transition width is the distance between the \(\alpha\) values where the fitted
+curve reaches \(0.1\) and \(0.9\). A narrow width means that collapse
+probability changes sharply near \(\alphac\).
+
+A defense is evaluated as an intervention on the same system, not as a static
+classifier. The primary defense estimand is
+\[
+    \shift^m(N)=
+    \alphac^m(N;\pi)-\alphac^m(N;\varnothing).
+\]
+A useful defense has positive threshold shift in the near-critical region and
+low clean-market cost. This matters because an intervention that blocks
+everything may reduce collapse but also destroy normal market behavior. For
+leaderboard ranking, WolfBench therefore reports \(\shift\) as a raw estimand
+and \(\tps\) as the official bounded-cost protection score.
+
+\section{Harmful-Agent Scaling: Hypotheses and Estimands}
+
+This section provides a stylized amplification model and defines the estimands
+tested by WolfBench. It does not prove a universal phase transition. Instead,
+it separates four objects: a mechanism-level motivation, a response-curve
+estimator, finite-size summary models, and local comparative statics.
+
+\paragraph{Amplification model.}
+Let \(E_t\geq 0\) denote harmful exposure in the society: harmful messages,
+displayed pressure, fake volume, or other mechanism-specific signals that can
+influence benign agents. Let \(D_t\geq 0\) denote market dislocation for the
+target asset, and write \(y_t=(E_t,D_t)^\top\). Around the clean-market regime,
+we use the linearized expectation model
+\[
+    \mathbb{E}[y_{t+1}\mid y_t]
+    =
+    M_m(\alpha,\theta)y_t+u_m(\alpha,\theta),
+\]
+where
+\[
+    M_m(\alpha,\theta)=
+    \begin{bmatrix}
+    r_m(\alpha,\theta) & \phi_m\\
+    \kappa_m\beta_s/L_m & 1-\lambda_m
+    \end{bmatrix}.
+\]
+Here \(\theta\) collects graph reach, harmful-agent placement, and retail
+susceptibility; \(r_m\) is exposure reproduction; \(\phi_m\) is social-market
+feedback; \(L_m\) is effective liquidity; \(\lambda_m\) is market damping; and
+\(\kappa_m\beta_s/L_m\) converts exposure into market dislocation. We assume
+\(r_m(\alpha,\theta)\) and the input \(u_m(\alpha,\theta)\) are nondecreasing in
+\(\alpha\), and increase with harmful-agent centrality, graph reach, and retail
+susceptibility.
+
+Iterating the linearized model gives
+\[
+    \mathbb{E}[y_t]
+    =
+    M_m^t y_0+\sum_{\ell=0}^{t-1}M_m^\ell u_m .
+\]
+When the spectral radius of \(M_m\) is well below one, harmful exposure is
+damped. As it approaches the unit scale, the same harmful input can be
+amplified over the horizon through the summation term. This mechanism motivates
+a critical regime in finite experiments, but it is not by itself a proof that
+all simulated mechanisms undergo a sharp transition.
+
+\paragraph{Response-curve estimator.}
+For each finite \(N\), mechanism \(m\), and defense policy \(\pi\), we summarize
+measured collapse rates with a logistic response curve:
+\[
+    p_m(N,\alpha;\pi)
+    =
+    \sigma\left(
+    s_N^m(\pi)\left(\alpha-\alphac^m(N;\pi)\right)
+    \right),
+\]
+where \(\sigma(u)=(1+\exp(-u))^{-1}\), \(\alphac^m(N;\pi)\) is the critical
+ratio, and \(s_N^m(\pi)>0\) is local steepness. This logistic curve is only a
+response-curve estimator for summarizing finite-grid measurements; it is not a
+claim that the simulator's true response is exactly logistic. It gives two
+interpretable summaries:
+\[
+    \alphac^m(N;\pi)=\inf\{\alpha:p_m(N,\alpha;\pi)\geq 1/2\},
+\]
+\[
+    W_N^m(\pi)=\alpha_{0.9}-\alpha_{0.1}
+    =\frac{2\log 9}{s_N^m(\pi)}.
+\]
+The benchmark is designed to test whether \(\alphac\) is stable under repeated
+seeds and whether the transition width narrows as the society size grows.
+
+\paragraph{Finite-size summaries.}
+We summarize finite-size trends with the parametric forms
+\[
+    \alphac^m(N) = \alpha_\infty^m + a_m N^{-\nu_m},
+    \qquad
+    W_N^m = b_m N^{-\gamma_m},
+\]
+with \(b_m,\nu_m,\gamma_m>0\) and \(a_m\in\mathbb{R}\). These are summary
+models, not universal laws. For social-amplification mechanisms, we expect
+\(a_m>0\), meaning that the critical ratio decreases toward
+\(\alpha_\infty^m\) as \(N\) grows. Other mechanisms may have weaker or
+different finite-size trends, which is why WolfBench reports mechanism-specific
+thresholds rather than forcing one global exponent.
+
+\paragraph{Comparative statics.}
+Let \(A_m(N,\alpha,\theta;\pi)\) denote a latent expected collapse pressure over
+the horizon, and let \(\tau_m\) be a calibrated threshold. We connect this
+latent margin to collapse probability by assuming
+\[
+    p_m(N,\alpha;\pi)
+    =
+    F_m(A_m(N,\alpha,\theta;\pi)-\tau_m),
+\]
+where \(F_m\) is monotone and \(F_m(0)=1/2\). Under this link, the critical
+ratio satisfies
+\[
+    A_m(N,\alphac,\theta;\pi)=\tau_m.
+\]
+Assume \(A_m\) is continuously differentiable, the critical solution is locally
+unique, and \(\partial A_m/\partial \alpha>0\) at the critical point. The
+implicit function theorem gives
+\[
+    \frac{\partial \alphac}{\partial \theta_j}
+    =
+    -\frac{\partial A_m/\partial \theta_j}
+    {\partial A_m/\partial \alpha}.
+\]
+Thus any parameter that increases latent collapse pressure lowers the critical
+ratio, while any parameter that dampens pressure raises it. The model motivates
+the following testable comparative statics:
+\[
+    \frac{\partial \alphac}{\partial L}>0,\qquad
+    \frac{\partial \alphac}{\partial G}<0,\qquad
+    \frac{\partial \alphac}{\partial \beta_s}<0,\qquad
+    \frac{\partial \alphac}{\partial \phi}<0,
+\]
+where \(G\) is graph reach or centrality gain, \(\beta_s\) is social
+susceptibility, and \(\phi\) is feedback strength.
+
+\paragraph{Defense as threshold shift.}
+Finally, a defense policy can be analyzed as a change in the latent pressure
+curve. Suppose \(A_\pi(\alpha,\theta)\) and \(A_{\varnothing}(\alpha,\theta)\)
+are nondecreasing in \(\alpha\), both define threshold crossings under the
+monotone link above, and
+\[
+    A_\pi(\alpha,\theta)\leq A_{\varnothing}(\alpha,\theta)
+    \quad\text{for all tested }\alpha .
+\]
+Then the defense critical ratio is no smaller than the no-defense critical
+ratio:
+\[
+    \alphac(N;\pi)\geq \alphac(N;\varnothing).
+\]
+If the defended curve never crosses the collapse threshold on the tested grid,
+WolfBench reports a right-censored lower bound beyond the largest tested
+\(\alpha\). This motivates threshold shift as the primary defense estimand.
+Average loss reduction is not enough: a useful defense should move the system
+away from the near-critical region while preserving clean-market utility.
+WolfBench converts this principle into \(\tps\), an official nonnegative
+leaderboard score, while retaining a signed diagnostic score for failure
+analysis.
+
+\paragraph{Testable predictions.}
+The preceding formulation yields five benchmark-level predictions. \textbf{P1}
+For fixed \(N\) and mechanism \(m\), collapse rates should admit a stable
+response-curve midpoint \(\alphac^m(N)\) and transition width. \textbf{P2} For
+social-amplification mechanisms, increasing society size should reduce the
+estimated critical ratio and narrow the transition width. \textbf{P3} Different
+mechanisms should have different \(\alphac^m(N)\), because they enter through
+different amplification channels. \textbf{P4} Parameters that dampen latent
+pressure, such as liquidity, should increase \(\alphac\), while parameters that
+increase graph reach, centrality, susceptibility, or feedback should decrease
+it. \textbf{P5} A useful defense is expected to produce positive threshold
+protection: positive \(\shift=\alphac^{\mathrm{defense}}-\alphac^{\mathrm{noguard}}\),
+reduced collapse inside the no-defense critical band, and bounded
+clean-market and false-positive cost. The experiments below test these
+predictions as finite-size benchmark claims, not as proofs of a universal
+phase transition.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{llll}
+\toprule
+Prediction & Estimand & Expected direction & Primary test \\
+\midrule
+P1 critical response & \(\alphac^m(N)\), \(W_N^m\) & stable midpoint and width & S1 alpha/N sweep \\
+P2 finite-size scaling & \(\partial\alphac/\partial N\), \(W_N\) & lower \(\alphac\), narrower \(W_N\) for social amplification & society-size sweep \\
+P3 mechanism heterogeneity & \(\alphac^m(N)\) across \(m\) & mechanism-specific thresholds & S1--S4 threshold audit \\
+P4 structural statics & \(\Delta\alphac\) under levers & signs follow \(L,G,\beta_s,\phi\) & targeted threshold shifts \\
+P5 defense objective & \(\tps\), \(\shift\), cost gates & positive protection under bounded cost & defense critical-regime sweep \\
+\bottomrule
+\end{tabular}
+\caption{Theory-to-experiment map. The paper is organized around estimands
+rather than a single benchmark score: each empirical section tests one
+prediction implied by the harmful-agent scaling formulation.}
+\label{tab:prediction-map}
+\end{table*}
+
+\section{WolfBench as Measurement Instrument}
+
+WolfBench is a controlled instrument for measuring harmful-agent scaling. Its
+purpose is not to win benchmark coverage by adding another simulator, and it is
+not intended to be a high-fidelity exchange simulator or a real-market
+forecasting tool. The design goal is narrower and more fundamental for safety
+evaluation: hold the agent society, harmful mechanism, defense interface, and
+randomization protocol fixed, then measure how collapse probability changes as
+the harmful population fraction varies. This makes WolfBench an empirical
+testbed for the finite-size estimands in Table~\ref{tab:prediction-map}.
+
+\begin{figure*}[t]
+\centering
+\includegraphics[width=0.98\textwidth]{Figures/figure2_wolfbench_environment.pdf}
+\caption{WolfBench measurement environment. Each episode runs a finite 30-day loop in
+which harmful agents inject mechanism-specific pressure, benign agents react to
+public social and market signals, the market updates prices and liquidity, and
+a defense policy can intervene using only public summaries. The benchmark
+therefore evaluates closed-loop collective risk rather than static
+classification.}
+\label{fig:environment}
+\end{figure*}
+
+\subsection{Agent Society}
+
+An episode contains \(N\) agents over a horizon \(T=30\) days. For each
+requested \(\alpha\), WolfBench instantiates the nearest feasible harmful count
+\(K\approx \alpha N\); the remaining agents are benign retail agents, with a
+small number of market makers providing liquidity. Retail agents are
+heterogeneous: they place different weights on fundamentals, momentum, social
+exposure, volume, warnings, and noise. This heterogeneity matters because
+collective failure is not caused by a single irrational agent, but by correlated
+updates among many ordinary agents exposed to the same public signals.
+
+The environment contains three assets with different liquidity and volatility
+profiles. Harmful mechanisms target one asset, while benign agents and market
+makers interact with the full market state. A static social graph connects
+agents, and messages propagate locally with decay and reshare effects. Market
+movement feeds back into the social layer: positive returns can increase the
+effective intensity of bullish messages, which in turn can induce additional
+buying. This loop is intentionally stylized. Its purpose is to expose the
+measurement problem created by coupled agents, not to reproduce microsecond
+exchange dynamics.
+
+\subsection{Manipulation Mechanisms}
+
+WolfBench includes one clean scenario and four harmful mechanisms
+(Table~\ref{tab:scenario-cards}). The harmful mechanisms are
+case-grounded simulations: each is abstracted from public financial-market
+enforcement patterns or widely documented market-abuse cases. They are not
+attempts to reconstruct a particular historical event, and the benchmark omits
+operational details that would make the scenarios usable as playbooks. Instead,
+the cases provide realistic failure channels. S1 abstracts microcap
+pump-and-dump dynamics; S2 abstracts social-media finfluencer scalping; S3
+abstracts spoofing and layering pressure; and S4 abstracts wash-trading and
+fake-liquidity behavior. The mechanisms are chosen because they enter the
+amplification model through different channels: social exposure, graph
+centrality, displayed liquidity, and volume-as-signal feedback.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{p{0.06\textwidth}p{0.18\textwidth}p{0.31\textwidth}p{0.25\textwidth}p{0.12\textwidth}}
+\toprule
+ID & Mechanism & Case grounding & Dominant channel & Role \\
+\midrule
+S0 & Clean market & Control setting without harmful agents & baseline drift and liquidity & calibration \\
+S1 & Social pump-and-dump & Public microcap and penny-stock pump-and-dump patterns & exposure, FOMO, price-social feedback & main scaling law \\
+S2 & Finfluencer scalping & Social-media promotion and follower scalping cases & high-centrality reach and copy trading & graph amplification \\
+S3 & Spoofing/layering & Public spoofing and layering enforcement cases & displayed depth, cancellations, liquidity stress & microstructure stress \\
+S4 & Wash trading & Crypto and thin-market wash-trading / fake-liquidity cases & fake volume and apparent liquidity & volume-signal stress \\
+\bottomrule
+\end{tabular}
+\caption{WolfBench scenario cards. S1--S4 are case-grounded simulations
+abstracted from real financial-market abuse patterns, not reconstructions of
+specific historical events. The benchmark reports mechanism-specific thresholds
+rather than forcing one universal critical ratio across all failure families.}
+\label{tab:scenario-cards}
+\end{table*}
+
+\subsection{Defense Interface}
+
+A defense is a WolfGuard policy. On each day, it receives a public summary
+containing market snapshots, social signals, and recent returns. It returns a
+per-asset intervention from a fixed action set: no action, warning, cooldown,
+or block. The evaluator owns the intervention costs and false-positive rules,
+so a submitted policy cannot improve its score by redefining costs. Standard
+submissions do not receive harmful identities, hidden policies, or private
+oracle pressure. An oracle policy may be reported as a non-eligible upper bound,
+but it is not part of the competitive track.
+
+This interface is deliberately more restrictive than a full simulator API. The
+defender must operate through the same compressed public information channel
+that an actual platform-level intervention would plausibly use. This prevents
+the defense benchmark from collapsing into hidden-state classification.
+
+\subsection{Trajectory Dataset}
+
+WolfBench can also export a JSONL trajectory dataset for learning defense
+models. Each row corresponds to one
+\((\mathrm{episode},\mathrm{day},\mathrm{asset})\) observation and contains
+exactly the public summary exposed to a WolfGuard policy. For training splits,
+the exporter can include oracle actions, future collapse indicators, future
+maximum severity, and component-level collapse labels. Held-out splits hide
+these labels by default. This design lets researchers train simulator-based
+defenses without giving evaluation-time access to private simulator state.
+
+\section{Metrics and Evaluation Protocol}
+
+WolfBench reports both continuous severity and binary episode events. The
+continuous score is useful for diagnosis, but the main scaling estimands use a
+binary event so that \(\alphac\) and transition width are well defined.
+
+\subsection{Collapse and Critical-Ratio Estimation}
+
+The per-day \(\collapse\) is a weighted sum of component risks. The generic
+binary collapse trigger fires when any calibrated component threshold is crossed
+(Table~\ref{tab:collapse-components}). This separation matters: the score
+describes how severe an episode became, while the event defines the response
+curve \(P(C=1\mid N,\alpha)\). We report Wilson intervals for raw collapse
+rates and bootstrap intervals for fitted \(\alphac\) values.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{p{0.30\columnwidth}p{0.17\columnwidth}p{0.41\columnwidth}}
+\toprule
+Component & Trigger & Interpretation \\
+\midrule
+Retail loss & 0.10 & at least 10\% loss of initial retail wealth \\
+Price dislocation & 0.30 & target price deviates by 30\% from fundamental value \\
+Liquidity stress & 3.00 & spread/cancellation stress exceeds calibrated clean level \\
+Social cascade & 0.40 & at least 40\% of retail population exposed/adopted \\
+Wealth transfer & 0.05 & harmful profit reaches 5\% of initial retail wealth \\
+\bottomrule
+\end{tabular}
+\caption{Generic collapse components. WolfBench reports a continuous weighted
+severity score, but the generic binary collapse event is triggered by
+calibrated component thresholds. S3 and S4 primary-failure audits use
+mechanism-aligned event definitions while retaining this generic event as a
+diagnostic.}
+\label{tab:collapse-components}
+\end{table}
+
+For each \(N\), mechanism \(m\), and defense \(\pi\), the benchmark sweeps an
+\(\alpha\)-grid and fits a response curve. The primary statistics are the
+midpoint \(\alphac^m(N;\pi)\) and the 10--90 transition width \(W_N^m(\pi)\).
+These summaries are more informative than a single average harm score because
+they distinguish three regimes: clearly safe, near-critical, and collapsed.
+They also support threshold-shift comparisons across defenses and structural
+parameters.
+
+\subsection{Defense Scoring}
+
+Defense evaluation uses the same environment and seeds as the no-defense
+baseline. The raw defense estimand is threshold shift,
+\[
+    \shift=\alphac^{\mathrm{defense}}-\alphac^{\mathrm{noguard}}.
+\]
+However, \(\shift\) alone is not sufficient for ranking policies: a defense can
+shift the fitted crossing by over-intervening, or reduce average losses far
+away from the critical regime without improving collective safety. WolfBench
+therefore ranks defenses by Threshold Protection Score (\(\tps\)), a bounded
+near-critical protection metric.
+
+Let \(p_0(\alpha)\) be the fitted no-defense collapse curve and
+\(\alpha_{c,0}\) its midpoint. The critical band is the set of tested ratios
+where the no-defense system is neither clearly safe nor already collapsed:
+\[
+    B_0=\{\alpha: p_0(\alpha)\in[0.2,0.8]\}.
+\]
+If a grid contains too few points in this interval, the benchmark uses the
+three tested \(\alpha\) values nearest \(\alpha_{c,0}\). Let \(p_d(\alpha)\)
+and \(\alpha_{c,d}\) denote the defended response curve and midpoint, and let
+\(W_0=\alpha_{0.8,0}-\alpha_{0.2,0}\) be the no-defense critical-band width.
+The protection components are
+\[
+    S_{\mathrm{shift}}=
+    \mathrm{clip}\!\left(
+    \frac{\alpha_{c,d}-\alpha_{c,0}}{\max(W_0,\epsilon)},0,1
+    \right),
+\]
+\[
+    S_{\mathrm{collapse}}=
+    \mathrm{clip}\!\left(
+    \frac{1}{0.5|B_0|}
+    \sum_{\alpha\in B_0}\left[p_0(\alpha)-p_d(\alpha)\right],0,1
+    \right),
+\]
+and
+\[
+    S_{\mathrm{severity}}=
+    \mathrm{clip}\!\left(
+    \frac{\bar{R}_0(B_0)-\bar{R}_d(B_0)}{\max(\bar{R}_0(B_0),\epsilon)},0,1
+    \right),
+\]
+where \(\bar{R}\) is mean continuous episode severity over the critical band.
+The safety gain is
+\[
+    G_{\mathrm{safety}}=
+    0.55S_{\mathrm{shift}}+
+    0.35S_{\mathrm{collapse}}+
+    0.10S_{\mathrm{severity}}.
+\]
+
+To prevent trivial always-block policies from winning, \(\tps\) applies an
+explicit cost gate. Let \(c_{\mathrm{clean}}\), \(f_{\mathrm{fp}}\), and
+\(c_{\mathrm{int}}\) denote normalized clean-market utility loss,
+false-positive rate, and intervention cost. With default budgets
+\(\delta_{\mathrm{clean}}=0.05\), \(\delta_{\mathrm{fp}}=0.10\), and
+\(\delta_{\mathrm{int}}=0.12\), the gate is
+\[
+    G_{\mathrm{cost}}=
+    \exp\!\left(
+    -\left[\frac{c_{\mathrm{clean}}}{\delta_{\mathrm{clean}}}-1\right]_+
+    -\left[\frac{f_{\mathrm{fp}}}{\delta_{\mathrm{fp}}}-1\right]_+
+    -\frac{1}{2}\left[\frac{c_{\mathrm{int}}}{\delta_{\mathrm{int}}}-1\right]_+
+    \right),
+\]
+where \([u]_+=\max(u,0)\). The official score is
+\[
+    \tps = 100\,G_{\mathrm{safety}}G_{\mathrm{cost}}.
+\]
+By construction, NoGuard has \(\tps=0\), random controls are treated as
+ineligible controls, and 90\% of the pre-gate safety gain comes from threshold
+shift and critical-band collapse reduction. A severity-only improvement can
+therefore receive at most a small positive contribution before cost gates, while
+the diagnostic columns reveal whether a policy actually moved the threshold.
+
+WolfBench additionally reports a signed diagnostic score, \(\rawnet\), using
+the same components without positive clipping and with direct cost penalties.
+\(\rawnet\) can be negative and is used to diagnose harmful interventions,
+including random controls or naive LLM policies. The official leaderboard is
+ranked by \(\tps\); \(\rawnet\), raw \(\shift\), collapse reduction, clean cost,
+false positives, and intervention rate are reported as diagnostic columns.
+
+\subsection{Splits and Reproducibility}
+
+The public repository defines public-dev, public-test, paper-final, and stress
+seed profiles. Public-dev supports iteration and, by default, is the split for
+released trajectory labels. Public-test uses held-out public seeds and hides
+labels. Paper-final uses a heavier seed profile for figures and tables reported
+in the paper. Hidden seeds are a server-side official-audit protocol rather
+than a public CLI split, while stress seeds are reported separately from public
+leaderboard claims. Each experiment writes its configuration, per-episode rows,
+summary files, and run metadata, so reported figures can be traced back to
+concrete grids and seeds. The canonical public grid is a benchmark profile;
+paper experiments such as the S1 society-size sweep and the four-scenario audit
+record their own alpha and \(N\) grids in metadata.
+
+\section{Experiments}
+
+The experiments are organized to test the predictions above. We separate
+estimand validation, mechanism breadth, parameter sensitivity, and defense
+evaluation so that each result answers a specific theoretical claim.
+
+\subsection{RQ1: Are Critical-Regime Estimands Stable?}
+
+This question tests P1 and P2 using a dedicated S1 society-size sweep. We
+estimate \(P(C=1\mid N,\alpha)\) for
+\(N\in\{100,150,200,300,500,750,1000,1500,2000,3000,5000\}\), using a
+near-threshold \(\alpha\)-grid and repeated seeds. We fit \(\alphac(N)\),
+transition width, and bootstrap confidence intervals; Table~\ref{tab:scaling-summary}
+reports a representative subset of the 11-point sweep. The key evidence is not
+a single collapse rate, but a family of response curves whose midpoint and
+width move downward after the smallest-size transient.
+
+\subsection{RQ2: Are Thresholds Mechanism-Specific?}
+
+This question tests P3 with cross-mechanism threshold estimation over S1--S4.
+We expect one response-curve estimator to apply across mechanisms, but not one
+universal critical ratio. The paper-facing audit uses generic collapse for
+S1/S2, spoofing/liquidity primary failure for S3, and fake-liquidity primary
+failure for S4. This keeps the measured event aligned with the dominant channel
+while retaining generic collapse as a diagnostic field.
+
+\subsection{RQ3: Do Structural Parameters Move Collapse Risk?}
+
+This question tests P4 using targeted threshold sweeps over structural levers:
+liquidity, graph degree, high-centrality placement, retail susceptibility, and
+social-market feedback. The preferred paper-facing estimand is the signed
+threshold shift \(\Delta\alphac\) induced by each lever. Existing fixed-alpha
+sensitivity audits are useful diagnostics, but they are weaker evidence because
+they measure \(\Delta P(C)\) at one operating point rather than movement of the
+response-curve midpoint. We therefore reserve the main structural figure for
+targeted \(\Delta\alphac\) sweeps and place fixed-alpha audits in the
+supplement.
+
+\subsection{RQ4: Do Defenses Shift the Critical Ratio?}
+
+This question tests P5. We compare NoGuard, random controls, rule-based
+defenses, registered open-model Risk-WolfGuard baselines when explicitly
+requested, simulator-trained or topology-aware baselines, and a privileged
+oracle upper bound on targeted critical-regime grids. The default lightweight
+leaderboard configuration contains NoGuard, Random, Rule, TopologyAware,
+Distilled, and Oracle; open-model risk scorers such as \texttt{deepseek\_risk},
+\texttt{llama\_risk}, \texttt{mistral\_risk}, and \texttt{qwen\_risk} are
+included only in runs that request them through the defense list. Each
+Risk-WolfGuard model scores manipulation risk and cascade risk from the public
+summary, while the evaluator maps calibrated risk to warning or cooldown
+actions under the same action thresholds and costs. This prevents the
+leaderboard from measuring prompt-specific action formatting rather than risk
+judgment. The official readout is \(\tps\), with raw \(\shift\), critical-band
+collapse reduction, clean cost, false-positive rate, and \(\rawnet\) reported
+as diagnostic columns. Privileged Oracle is reported
+separately as an upper bound and is not eligible for the competitive ranking.
+
+\section{Results}
+
+We report results in the same order as the predictions, so the empirical
+section reads as a test of the theory-facing estimands rather than as unrelated
+benchmark tables.
+
+\subsection{Finite-Size Critical Regime}
+
+Figure~\ref{fig:finite-size} and Table~\ref{tab:scaling-summary} are the main
+evidence for P1 and P2. In the dedicated S1 sweep, the estimated critical
+harmful ratio is \(0.0144\) at \(N=100\) and \(0.00937\) at \(N=5000\), with
+small non-monotonicity in the smallest-size rows and a clearer downward trend
+after that transient. The 10--90 transition width narrows from \(0.0366\) to
+\(0.0183\) across the same endpoint comparison. A power-law summary gives
+\(\alphac(N)\approx A N^{-\nu}\) with \(\nu=0.116\) and log-space \(R^2=0.891\);
+the width fit gives \(\gamma=0.227\) and \(R^2=0.837\). These fits should be
+read as finite-size summaries of this benchmark sweep, not as universal
+exponents.
+
+\begin{figure*}[t]
+\centering
+\figureplaceholder{2.1in}{
+\textbf{Figure 3: finite-size scaling law.}\\[0.35em]
+Panel A: \(\alphac(N)\) with bootstrap confidence intervals and power-law
+summary fit.\\
+Panel B: transition width \(W_N=\alpha_{0.9}-\alpha_{0.1}\) with width-scaling
+fit.\\
+Panel C: residual or stable-regime robustness fit for \(N\geq 500\).\\
+Panel D: compact annotation of \(\nu\), \(\gamma\), log-space \(R^2\), seed
+count, and alpha grid.
+}
+\caption{Finite-size scaling law for the S1 social-amplification mechanism.
+The main readout is not a single collapse rate, but the movement of the fitted
+response midpoint \(\alphac(N)\) and the sharpening of transition width as the
+agent society grows.}
+\label{fig:finite-size}
+\end{figure*}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{rrrrr}
+\toprule
+\(N\) & \(\alphac\) & 95\% CI & \(W_N\) & logistic slope \\
+\midrule
+100 & 0.01439 & [0.01278, 0.01610] & 0.03662 & 119.99 \\
+200 & 0.01516 & [0.01336, 0.01694] & 0.04448 & 98.80 \\
+500 & 0.01377 & [0.01232, 0.01533] & 0.03613 & 121.62 \\
+1000 & 0.01236 & [0.01115, 0.01355] & 0.02348 & 187.16 \\
+2000 & 0.01126 & [0.01008, 0.01240] & 0.02081 & 211.13 \\
+5000 & 0.00937 & [0.00817, 0.01049] & 0.01826 & 240.62 \\
+\bottomrule
+\end{tabular}
+\caption{Representative rows from the S1 society-size scaling sweep. The full
+sweep uses 11 society sizes from \(N=100\) to \(N=5000\); each row is estimated
+from repeated 30-day episodes over an \(\alpha\)-grid, and confidence intervals
+are bootstrap intervals over seeds.}
+\label{tab:scaling-summary}
+\end{table*}
+
+\subsection{Mechanism-Specific Thresholds}
+
+Figure~\ref{fig:mechanisms} tests P3. The important result is not that all
+mechanisms share one critical ratio. They do not. Instead, the same response
+estimator reveals distinct critical regimes for distinct channels when paired
+with the scenario-aligned primary event. In the current four-scenario audit,
+S1 uses generic collapse, S2 uses generic collapse with a grid-sensitive
+largest-size boundary, S3 uses spoofing/liquidity failure, and S4 uses
+fake-liquidity failure. We therefore report S3 and S4 as mechanism-specific
+primary-failure stress cases, with generic collapse retained as a diagnostic
+rather than the main claim.
+
+\begin{figure*}[t]
+\centering
+\figureplaceholder{2.0in}{
+\textbf{Figure 4: mechanism heterogeneity.}\\[0.35em]
+Panel A: \(\alphac^m(N)\) for S1--S4 with confidence intervals.\\
+Panel B: dominant channel annotations for each mechanism.\\
+Panel C: transition-width or grid-coverage notes for S3/S4.\\
+Panel D: compact table inset showing which mechanisms support clean logistic
+threshold estimation under the current grid.
+}
+\caption{Mechanism heterogeneity. WolfBench uses the same response-curve
+estimand across harmful mechanisms, but does not impose one global exponent or
+one universal threshold.}
+\label{fig:mechanisms}
+\end{figure*}
+
+\subsection{Structural Threshold Shifts}
+
+Figure~\ref{fig:structural-shifts} and Table~\ref{tab:statics} summarize the
+test of P4: whether structural levers move collapse risk in the direction
+predicted by the amplification model. The theory predicts that increasing
+effective liquidity should raise \(\alphac\), while increasing graph reach,
+harmful centrality, retail susceptibility, or feedback should lower it. The
+main estimand is signed \(\Delta\alphac\) where targeted threshold sweeps are
+available; fixed-alpha sensitivity audits are reported as diagnostic evidence
+for levers whose threshold sweeps are too broad or grid-sensitive.
+
+\begin{figure*}[t]
+\centering
+\figureplaceholder{2.1in}{
+\textbf{Figure 5: structural threshold shifts.}\\[0.35em]
+Panel A: liquidity sweep, showing positive \(\Delta\alphac\).\\
+Panel B: graph degree / placement sweep, showing negative \(\Delta\alphac\).\\
+Panel C: retail susceptibility sweep, showing negative \(\Delta\alphac\).\\
+Panel D: feedback sweep, showing negative \(\Delta\alphac\).\\
+Panel E: sign-test summary with confidence intervals.
+}
+\caption{Structural threshold shifts. This figure tests the comparative-static
+direction predicted by the scaling model: parameters that dampen latent
+collapse pressure should shift the critical ratio right, while parameters that
+increase amplification should shift it left.}
+\label{fig:structural-shifts}
+\end{figure*}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{llll}
+\toprule
+Lever & Theory sign for \(\Delta\alphac\) & Measurement & Paper role \\
+\midrule
+Effective liquidity \(L\) & positive & threshold sweep / liquidity sensitivity & pressure-damping check \\
+Graph reach \(G\) & negative & degree sweep / mean-degree sensitivity & social-amplification check \\
+Harmful centrality & negative & placement sweep / hub-placement sensitivity & graph-position check \\
+Retail susceptibility \(\beta_s\) & negative & risk-appetite or social-beta sweep & benign-amplification check \\
+Feedback \(\phi\) & negative & feedback sweep near \(\alphac\) & closed-loop feedback check \\
+\bottomrule
+\end{tabular}
+\caption{Comparative-statics sign tests. The main text emphasizes the sign of
+threshold movement when targeted sweeps identify \(\Delta\alphac\), while
+fixed-alpha diagnostics are used to support the same mechanism-level
+interpretation without overstating a midpoint estimate.}
+\label{tab:statics}
+\end{table*}
+
+\subsection{Threshold Protection Leaderboard}
+
+The defense leaderboard is organized around \(\tps\), not average harm
+reduction. This changes the interpretation of the benchmark. A high-scoring
+competitive policy should protect the society in the no-defense critical band,
+shift the fitted collapse threshold to the right, and stay inside clean-market
+and false-positive budgets. Because \(\tps\) includes a small severity-reduction
+term, a tiny positive score without threshold shift is possible, but the
+diagnostic columns expose this case. Controls and upper bounds are displayed
+but not mixed with the competitive ranking: NoGuard fixes the zero point,
+Random tests that uninformed interventions do not win, and Privileged Oracle
+estimates the full-information upper bound.
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{lllllll}
+\toprule
+Defense & Track & Rank role & \(\tps\uparrow\) & \(\shift\uparrow\) & Critical \(\Delta P\uparrow\) & Cost columns \\
+\midrule
+NoGuard & reference & zero point & 0 by definition & 0 & 0 & reported \\
+Random & control & ineligible sanity check & capped at 0 & diagnostic & diagnostic & reported \\
+Rule-WolfGuard & rule baseline & eligible baseline & ranked & reported & reported & reported \\
+Open LLM Risk-WolfGuard & model baseline & eligible baseline & ranked & reported & reported & reported \\
+TopologyAware-WolfGuard & in-house baseline & eligible baseline & ranked & reported & reported & reported \\
+Privileged Oracle & upper bound & separate & upper bound & reported & reported & reported \\
+\bottomrule
+\end{tabular}
+\caption{Leaderboard structure for defense evaluation. The official ranking is
+by \(\tps\), a nonnegative near-critical protection score. Signed diagnostic
+quantities such as \(\rawnet\), negative threshold shift, high cost, or elevated
+false positives are reported as columns rather than hidden inside the primary
+score.}
+\label{tab:tps-leaderboard}
+\end{table*}
+
+For the open-model track, all models use the same risk-scoring interface and
+the same evaluator-owned action thresholds. This makes the leaderboard compare
+risk assessment under identical intervention semantics rather than free-form
+policy prompting. The expected qualitative ordering is also part of the sanity
+check: NoGuard is zero, Random should not rank, naive or weak models may have
+low \(\tps\) or negative \(\rawnet\), the topology-aware baseline should
+produce a positive threshold-protection margin, and Privileged Oracle should
+remain a separate upper bound. A leaderboard that violates these relationships
+would indicate a scoring or calibration problem rather than a stronger defense.
+
+\section{Related Work}
+
+WolfBench is related to threshold models of collective behavior
+\citep{schelling1971dynamic,granovetter1978threshold,watts2002simple,dodds2004universal}.
+Those models show how local adoption rules can produce global cascades. Our
+setting differs in two ways: harmful agents are an explicit controlled minority,
+and the measured object is a finite-size collapse-response curve in an
+interactive agent benchmark.
+
+Financial network and contagion models study systemic risk through balance
+sheets, exposures, and network topology
+\citep{haldane2011systemic,elliott2014financial,acemoglu2015systemic}. Market
+simulators such as ABIDES emphasize high-fidelity trading infrastructure
+\citep{byrd2019abides}. WolfBench is less realistic as a market simulator but
+more targeted as a safety instrument: it isolates how harmful population
+composition, social exposure, and defense policies move collapse thresholds.
+
+Recent agent benchmarks evaluate tool use, web tasks, social interaction, and
+reward-safety tradeoffs
+\citep{park2023generative,liu2023agentbench,zhou2023webarena,zhou2023sotopia,pan2023machiavelli}.
+Harmful-agent benchmarks focus on whether individual agents complete unsafe
+tasks \citep{andriushchenko2024agentharm}. WolfBench instead evaluates
+collective failures: harm emerges from coupled benign behavior after a harmful
+minority perturbs shared state.
+
+Finally, our defense formulation is related to safe and constrained decision
+making \citep{leike2017safetygridworlds,achiam2017constrained}, but the
+objective is different. A good WolfGuard policy is not simply a classifier with
+high recall. It must shift the critical harmful-agent ratio while preserving
+clean-market utility.
+
+\section{Discussion}
+
+The main implication is that agent safety should include society-level
+measurement. A system can appear safe under isolated-agent evaluation while
+remaining vulnerable to small coordinated minorities that alter shared state.
+In such settings, the relevant safety question is not only whether one harmful
+action is detected, but how close the whole society is to a critical regime.
+This is the dimension that single-agent harmfulness scores cannot capture:
+population composition can change the failure mode even when individual
+actions remain small.
+
+The finite-size framing also changes how defenses should be evaluated. A
+defense that slightly reduces average loss may be less meaningful than one that
+moves \(\alphac\) to the right and widens the near-critical margin. Conversely,
+a defense that blocks many normal actions may reduce collapse while destroying
+utility. \(\tps\) makes this tradeoff explicit by rewarding near-critical
+protection only under bounded clean-market and false-positive cost.
+
+WolfBench should therefore be read as a measurement instrument. It is useful
+when its results are interpreted comparatively: across \(N\), across harmful
+mechanisms, across structural parameters, and across defenses on the same
+critical-regime grid. It should not be interpreted as a market prediction
+engine.
+
+\section{Limitations and Ethical Considerations}
+
+WolfBench abstracts away many features of real markets: order-book detail,
+institutional participants, regulatory response, heterogeneous information,
+cross-asset portfolios, and strategic adaptation over long horizons. The
+30-day horizon is a controlled stress window, not a claim that real harmful
+campaigns unfold on exactly that timescale. The finite-size exponents reported
+in the paper are descriptive summaries of this benchmark, not universal market
+constants.
+
+The benchmark also creates dual-use risk. We therefore describe harmful
+mechanisms at the level needed for scientific reproducibility, but avoid
+operational instructions that would improve real manipulation. Scenarios are
+case-inspired abstractions, not playbooks. Defense performance in WolfBench is
+evidence of benchmark behavior, not deployment readiness for real markets.
+
+Finally, current evidence is strongest when each mechanism is evaluated with
+the event aligned to its dominant channel. S1 supports the generic-collapse
+scaling claim, S3 and S4 are reported with spoofing/liquidity and
+fake-liquidity primary failures, and S2 remains sensitive to grid resolution at
+the largest tested sizes. This is not a defect of the benchmark; it is
+precisely why mechanism-specific thresholds and diagnostic generic-collapse
+fields are both reported.
+
+\section{Conclusion}
+
+We studied harmful-agent scaling: the way collapse probability changes as a
+harmful minority grows inside a finite agent society. The paper's central claim
+is not that all financial systems exhibit a universal phase transition, nor
+that a particular simulator is the contribution by itself. The claim is that
+harmful-agent safety has a scaling dimension and that collective-risk
+evaluation needs estimands for finite societies: \(\alphac(N)\), transition
+width, mechanism-specific thresholds, structural threshold shifts, and
+defense-induced threshold protection. WolfBench instantiates these estimands
+in a controlled financial agent society and ranks defenses with \(\tps\), a
+near-critical protection score with explicit cost gates. This reframes agent
+safety from isolated-agent evaluation toward collective-risk measurement, where
+the central defense question is whether an intervention moves the society away
+from the critical regime without destroying normal behavior.
+
+\bibliography{../paper/references}
+
+\end{document}

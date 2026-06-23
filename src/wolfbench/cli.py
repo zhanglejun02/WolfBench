@@ -353,7 +353,7 @@ def protocol_cmd():
 def export_trajectories_cmd(scenario_spec, alphas, n_society, split, seeds,
                             labels_policy, out):
     """Export public-observation trajectory JSONL for defense training."""
-    out = out or f"outputs/defense_benchmark/trajectory_dataset/{split}.jsonl"
+    out = out or f"paperoutputs/benchmark/trajectory_dataset/{split}.jsonl"
     metadata = export_trajectory_dataset(
         out_path=out,
         scenarios=_resolve_scenarios(scenario_spec),
@@ -372,7 +372,7 @@ def export_trajectories_cmd(scenario_spec, alphas, n_society, split, seeds,
 @click.option("--dev-dataset", type=click.Path(exists=True), default=None,
               help="Optional labeled trajectory JSONL for offline validation.")
 @click.option("--out", type=click.Path(),
-              default="outputs/defense_benchmark/distilled_wolfguard/model.json")
+              default="paperoutputs/benchmark/distilled_wolfguard/model.json")
 @click.option("--epochs", default=300, type=int)
 @click.option("--lr", default=0.1, type=float)
 @click.option("--l2", default=1e-4, type=float)
@@ -409,6 +409,10 @@ def _summarise(res) -> dict:
         "target_asset": res.target_asset,
         "collapse_rate": m.collapse_rate,
         "collapse_day": m.collapse_day,
+        "primary_metric": m.primary_metric,
+        "primary_failure_rate": m.primary_failure_rate,
+        "primary_failure_day": m.primary_failure_day,
+        "primary_failure_score_max": m.primary_failure_score_max,
         "max_collapse_score": m.max_collapse_score,
         "retail_loss_pct_30d": m.retail_loss_pct_30d,
         "harmful_profit": m.harmful_profit,
@@ -416,6 +420,12 @@ def _summarise(res) -> dict:
         "price_dislocation_max": m.price_dislocation_max,
         "liquidity_stress_max": m.liquidity_stress_max,
         "social_cascade_peak": m.social_cascade_peak,
+        "wash_share_max": m.wash_share_max,
+        "volume_distortion_max": m.volume_distortion_max,
+        "volume_signal_z_max": m.volume_signal_z_max,
+        "cancel_rate_max": m.cancel_rate_max,
+        "spoof_depth_to_liquidity_max": m.spoof_depth_to_liquidity_max,
+        "withdrawal_loss_max": m.withdrawal_loss_max,
         "intervention_cost": m.intervention_cost,
         "utility_loss": m.utility_loss,
         "false_positive_rate": m.false_positive_rate,

@@ -5,7 +5,7 @@ This experiment is intended for the paper evidence package that supports the
 claim that WolfBench measures a family of closed-loop failure mechanisms, not a
 single hand-tuned pump-and-dump setting.
 
-Output: outputs/scaling_theory/exp7_cross_mechanism_threshold/
+Output: paperoutputs/scaling/exp7_cross_mechanism_threshold/
 """
 from __future__ import annotations
 

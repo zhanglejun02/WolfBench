@@ -1,7 +1,8 @@
 """Shared helpers for WolfBench experiments.
 
-Scaling-theory experiments write to ``outputs/scaling_theory/<exp_name>/``.
-Defense-benchmark experiments write to ``outputs/defense_benchmark/<exp_name>/``.
+Paper-facing scaling experiments write to ``paperoutputs/scaling/<exp_name>/``.
+Paper-facing benchmark experiments write to ``paperoutputs/benchmark/<exp_name>/``.
+The legacy ``outputs/`` tree is kept as an archive for older runs.
 Each experiment directory contains at least:
 * ``config.json``  -- experiment configuration
 * ``data.csv``     -- raw per-episode metrics
@@ -29,9 +30,10 @@ from wolfbench.tracks.runner import calibrate_clean_baseline
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-OUTPUTS_ROOT = REPO_ROOT / "outputs"
-SCALING_THEORY_OUTPUTS_ROOT = OUTPUTS_ROOT / "scaling_theory"
-DEFENSE_BENCHMARK_OUTPUTS_ROOT = OUTPUTS_ROOT / "defense_benchmark"
+LEGACY_OUTPUTS_ROOT = REPO_ROOT / "outputs"
+OUTPUTS_ROOT = REPO_ROOT / "paperoutputs"
+SCALING_THEORY_OUTPUTS_ROOT = OUTPUTS_ROOT / "scaling"
+DEFENSE_BENCHMARK_OUTPUTS_ROOT = OUTPUTS_ROOT / "benchmark"
 
 
 def _utc_now() -> str:
@@ -81,11 +83,11 @@ def exp_dir(name: str, track: str | None = None) -> Path:
 
 
 def scaling_exp_dir(name: str) -> Path:
-    return exp_dir(name, "scaling_theory")
+    return exp_dir(name, "scaling")
 
 
 def benchmark_exp_dir(name: str) -> Path:
-    return exp_dir(name, "defense_benchmark")
+    return exp_dir(name, "benchmark")
 
 
 @dataclass
@@ -173,6 +175,10 @@ def run_episode(spec: RunSpec, baseline=None) -> dict[str, Any]:
         "label": spec.label,
         "collapse_rate": m.collapse_rate,
         "collapse_day": m.collapse_day if m.collapse_day is not None else -1,
+        "primary_metric": m.primary_metric,
+        "primary_failure_rate": m.primary_failure_rate,
+        "primary_failure_day": m.primary_failure_day if m.primary_failure_day is not None else -1,
+        "primary_failure_score_max": m.primary_failure_score_max,
         "max_collapse_score": m.max_collapse_score,
         "retail_loss_pct_30d": m.retail_loss_pct_30d,
         "harmful_profit": m.harmful_profit,
@@ -183,6 +189,12 @@ def run_episode(spec: RunSpec, baseline=None) -> dict[str, Any]:
         "intervention_cost": m.intervention_cost,
         "utility_loss": m.utility_loss,
         "false_positive_rate": m.false_positive_rate,
+        "wash_share_max": m.wash_share_max,
+        "volume_distortion_max": m.volume_distortion_max,
+        "volume_signal_z_max": m.volume_signal_z_max,
+        "cancel_rate_max": m.cancel_rate_max,
+        "spoof_depth_to_liquidity_max": m.spoof_depth_to_liquidity_max,
+        "withdrawal_loss_max": m.withdrawal_loss_max,
     }
 
 

@@ -1,7 +1,7 @@
 """LLM hook smoke tests: rule fallback must be deterministic and equivalent."""
 from wolfbench.agents.llm import (
     RuleFallbackBackend, LLMPumpLeader, LLMFinfluencer, LLMRuleAssistWolfGuardAgent,
-    LLMWolfGuardAgent,
+    LLMRiskWolfGuardAgent, LLMWolfGuardAgent,
     OpenRouterChatBackend, VLLMChatBackend, _loads_json_dict, make_chat_backend,
 )
 from wolfbench.agents.wolfguard import WolfGuardConfig
@@ -100,6 +100,15 @@ def test_llm_policy_factory_supports_openrouter_from_scratch():
     assert get_track("llm") == "llm_from_scratch"
 
 
+def test_qwen_risk_policy_factory_uses_risk_wrapper_without_calling_server():
+    policy = get_policy("qwen_risk", model="qwen3-8b", base_url="http://127.0.0.1:9/v1")
+    assert isinstance(policy, LLMRiskWolfGuardAgent)
+    assert policy.name == "Qwen-Risk-WolfGuard"
+    assert policy.backend.name == "vllm_chat"
+    assert policy.backend.calls == 0
+    assert get_track("qwen_risk") == "open_llm_risk"
+
+
 def test_llm_policy_factory_reads_provider_from_env(monkeypatch):
     monkeypatch.setenv("WOLFBENCH_LLM_PROVIDER", "openrouter")
     monkeypatch.setenv("WOLFBENCH_OPENROUTER_MODEL", "openai/gpt-4o-mini")
@@ -155,3 +164,23 @@ def test_llm_wolfguard_can_act_without_rule_action_seed():
     actions = agent.decide(1, summary)
     assert actions["asset_2"]["action"] == "warning"
     assert actions["asset_2"]["risk"] == 0.6
+
+
+def test_llm_risk_wolfguard_uses_threshold_layer_and_hides_oracle():
+    backend = CaptureBackend({
+        "asset_2": {"manipulation_risk": 0.8, "cascade_risk": 0.6, "confidence": 1.0}
+    })
+    agent = LLMRiskWolfGuardAgent(backend=backend, config=WolfGuardConfig(), warning_threshold=0.5, cooldown_threshold=0.9)
+    summary = {
+        "day": 1,
+        "market": {"asset_2": {"price": 5.0, "fundamental": 4.0}},
+        "social": {"asset_2": {}},
+        "recent_return": {"asset_2": 0.0},
+        "oracle_view": {"asset_2": {"harmful_pressure": 1.0}},
+    }
+
+    actions = agent.decide(1, summary)
+
+    assert "oracle_view" not in backend.user
+    assert actions["asset_2"]["action"] == "warning"
+    assert actions["asset_2"]["components"]["manipulation_risk"] == 0.8

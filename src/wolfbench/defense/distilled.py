@@ -283,7 +283,7 @@ class DistilledWolfGuardPolicy:
     def __post_init__(self) -> None:
         path = self.model_path or os.getenv(
             "WOLFBENCH_DISTILLED_MODEL",
-            "outputs/defense_benchmark/distilled_wolfguard/model.json",
+            "paperoutputs/benchmark/distilled_wolfguard/model.json",
         )
         if not Path(path).exists():
             raise FileNotFoundError(

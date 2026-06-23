@@ -4,7 +4,7 @@ This is the main controlled scaling-protocol experiment. It estimates the
 critical harmful-agent ratio with a logistic fit and bootstrap confidence
 intervals, rather than only using a grid-crossing interpolation.
 
-Output: outputs/scaling_theory/exp2_society_size_scaling/
+Output: paperoutputs/scaling/exp2_society_size_scaling/
 """
 from __future__ import annotations
 

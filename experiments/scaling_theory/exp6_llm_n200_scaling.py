@@ -5,7 +5,7 @@ fixed at N=200, upgrades at most one harmful strategic leader to an LLM, and
 sweeps alpha to test whether the nonlinear collapse transition persists when a
 single LLM strategist is embedded in an otherwise rule-based harmful population.
 
-Output: outputs/scaling_theory/exp6_llm_n200_scaling/
+Output: paperoutputs/scaling/exp6_llm_n200_scaling/
 """
 from __future__ import annotations
 

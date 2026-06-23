@@ -305,6 +305,13 @@ def figure_scaling_transition(output_dir: Path, manifest: list[dict[str, Any]]) 
         read_csv(exp1_dir / "collapse_rate_wilson_ci.csv"),
         ["n_society", "alpha", "mean", "n", "ci_low", "ci_high"],
     )
+    exp1_threshold_path = exp1_dir / "alpha_critical_summary.csv"
+    exp1_thresholds = None
+    if exp1_threshold_path.exists():
+        exp1_thresholds = numeric_columns(
+            read_csv(exp1_threshold_path),
+            ["n_society", "alpha_c_logistic", "alpha_c_ci_low", "alpha_c_ci_high", "transition_width_10_90"],
+        )
     exp2_thresholds = numeric_columns(
         read_csv(exp2_dir / "alpha_critical_summary.csv"),
         ["n_society", "alpha_c_logistic", "alpha_c_ci_low", "alpha_c_ci_high", "transition_width_10_90"],
@@ -341,6 +348,18 @@ def figure_scaling_transition(output_dir: Path, manifest: list[dict[str, Any]]) 
             alpha=0.15,
             linewidth=0,
         )
+        if exp1_thresholds is not None:
+            threshold_rows = exp1_thresholds[exp1_thresholds["n_society"] == size_value]
+            if not threshold_rows.empty:
+                alpha_c = threshold_rows.iloc[0].get("alpha_c_logistic")
+                if pd.notna(alpha_c):
+                    axis_transition.axvline(
+                        float(alpha_c),
+                        color=size_colors[size_value],
+                        linestyle=":",
+                        linewidth=1.1,
+                        alpha=0.7,
+                    )
     axis_transition.axhline(0.5, color="#6B7280", linestyle="--", linewidth=1.0)
     set_alpha_axis(axis_transition, float(exp1_curve["alpha"].max()), linthresh=1e-3)
     axis_transition.set_ylim(-0.04, 1.04)
@@ -427,7 +446,12 @@ def figure_scaling_transition(output_dir: Path, manifest: list[dict[str, Any]]) 
         "figure_1_scaling_transition",
         manifest,
         "Scaling transition and finite-size critical point",
-        [exp1_dir / "collapse_rate_wilson_ci.csv", exp2_dir / "alpha_critical_summary.csv", exp2_dir / "collapse_rate_wilson_ci.csv"],
+        [
+            exp1_dir / "collapse_rate_wilson_ci.csv",
+            exp1_threshold_path if exp1_threshold_path.exists() else exp1_dir / "summary.json",
+            exp2_dir / "alpha_critical_summary.csv",
+            exp2_dir / "collapse_rate_wilson_ci.csv",
+        ],
         "Main theory figure: nonlinear collapse transition, estimated alpha_c(N), heatmap, and width scaling.",
         f"Exp1={format_count(exp1_episodes)} episodes; Exp2={format_count(exp2_episodes)} episodes compressed into {len(threshold_subset)} alpha_c estimates.",
     )
@@ -448,7 +472,7 @@ def figure_mechanisms_robustness(output_dir: Path, manifest: list[dict[str, Any]
     )
     exp3_rows = numeric_columns(read_csv(exp3_dir / "data.csv"), ["n_society", "collapse_rate"])
     exp4_rows = numeric_columns(read_csv(exp4_dir / "data.csv"), ["feedback_strength", "collapse_rate"])
-    exp8_delta = numeric_columns(read_csv(exp8_dir / "sensitivity_delta_summary.csv"), ["delta_collapse_rate"])
+    exp8_delta = numeric_columns(read_csv(exp8_dir / "sensitivity_delta_summary.csv"), ["delta_alpha_c"])
     exp8_data = read_csv(exp8_dir / "data.csv")
 
     figure, axes = plt.subplots(2, 2, figsize=(7.2, 6.2), constrained_layout=True)
@@ -549,18 +573,18 @@ def figure_mechanisms_robustness(output_dir: Path, manifest: list[dict[str, Any]
 
     family_order = [family for family in FAMILY_LABELS if family in set(exp8_delta["family"])]
     scenario_order = [scenario for scenario in ["s1", "s2", "s3", "s4"] if scenario in set(exp8_delta["scenario"])]
-    sensitivity_matrix = exp8_delta.pivot_table(index="scenario", columns="family", values="delta_collapse_rate", aggfunc="mean").reindex(index=scenario_order, columns=family_order)
+    sensitivity_matrix = exp8_delta.pivot_table(index="scenario", columns="family", values="delta_alpha_c", aggfunc="mean").reindex(index=scenario_order, columns=family_order)
     sns.heatmap(
         sensitivity_matrix,
         ax=axis_sensitivity,
         cmap=DELTA_CMAP,
         vmin=0,
-        vmax=max(0.5, float(np.nanmax(sensitivity_matrix.to_numpy(dtype=float)))),
+        vmax=max(0.01, float(np.nanmax(sensitivity_matrix.to_numpy(dtype=float)))),
         annot=True,
         fmt=".2f",
         linewidths=0.35,
         linecolor="#FFFFFF",
-        cbar_kws={"label": "Delta P(collapse)", "shrink": 0.82},
+        cbar_kws={"label": "Delta alpha_c", "shrink": 0.82},
     )
     axis_sensitivity.set_xlabel("Parameter family")
     axis_sensitivity.set_ylabel("Scenario")
@@ -1164,7 +1188,7 @@ def write_manifest(output_dir: Path, manifest: list[dict[str, Any]], skipped: li
 
 def build_figures(defense_out: str, qwen_out: str, include_running_qwen: bool) -> None:
     configure_style()
-    output_dir = OUTPUTS_ROOT / "paper_figures"
+    output_dir = SCALING_THEORY_OUTPUTS_ROOT / "paper_figures"
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest: list[dict[str, Any]] = []
     skipped: list[dict[str, str]] = []

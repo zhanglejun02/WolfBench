@@ -41,6 +41,7 @@ market_makers:
   count: 3
   base_spread_bps: 15
   inventory_aversion: 0.05
+  intraday_steps: 12
 
 social:
   graph: scale_free

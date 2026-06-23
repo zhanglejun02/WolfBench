@@ -15,7 +15,7 @@ Environment controls:
     WOLFBENCH_EXP5_ALPHAS_S2=0.0,0.00025,...
     WOLFBENCH_EXP5_OUT=exp5_wolfguard_defense
 
-Outputs: outputs/defense_benchmark/<out>/
+Outputs: paperoutputs/benchmark/<out>/
     data.csv
     alpha_curves.csv
     threshold_shift_summary.csv
