@@ -183,6 +183,10 @@ class LLMRiskWolfGuardPolicy:
 
 OPEN_LLM_RISK_DEFAULTS = {
     "deepseek_risk": ("openrouter", "deepseek/deepseek-chat-v3-0324", "DeepSeek-Risk-WolfGuard"),
+    "claude_opus_risk": ("openrouter", "anthropic/claude-opus-4.8", "Claude-Opus-Risk-WolfGuard"),
+    "gemini25_pro_risk": ("openrouter", "google/gemini-2.5-pro", "Gemini-2.5-Pro-Risk-WolfGuard"),
+    "gpt41_risk": ("openrouter", "openai/gpt-4.1", "GPT-4.1-Risk-WolfGuard"),
+    "gpt4o_mini_risk": ("openrouter", "openai/gpt-4o-mini", "GPT-4o-mini-Risk-WolfGuard"),
     "llama_risk": ("openrouter", "meta-llama/llama-3.1-8b-instruct", "Llama-Risk-WolfGuard"),
     "mistral_risk": ("openrouter", "mistralai/mistral-7b-instruct", "Mistral-Risk-WolfGuard"),
     "qwen_risk": ("vllm", "qwen3-8b", "Qwen-Risk-WolfGuard"),
@@ -198,7 +202,11 @@ TRACKS = {
     "qwen": "llm_from_scratch",
     "llm_risk": "open_llm_risk",
     "qwen_risk": "open_llm_risk",
+    "claude_opus_risk": "open_llm_risk",
     "deepseek_risk": "open_llm_risk",
+    "gemini25_pro_risk": "open_llm_risk",
+    "gpt41_risk": "open_llm_risk",
+    "gpt4o_mini_risk": "open_llm_risk",
     "llama_risk": "open_llm_risk",
     "mistral_risk": "open_llm_risk",
     "llm_assisted": "legacy_assisted_rule",
@@ -230,7 +238,8 @@ def get_policy(name: str, **kwargs):
 
     ``name`` ∈ ``{noguard, random, rule, oracle, distilled,
     calibrated_distilled, topology_aware, llm, qwen, llm_risk, qwen_risk,
-    deepseek_risk, llama_risk, mistral_risk, llm_assisted,
+    claude_opus_risk, deepseek_risk, gemini25_pro_risk, gpt41_risk,
+    gpt4o_mini_risk, llama_risk, mistral_risk, llm_assisted,
     qwen_assisted}``. ``llm`` accepts
     a ``model`` kwarg (defaults to the deterministic rule fallback). ``qwen``
     uses the local vLLM OpenAI-compatible endpoint by default. ``distilled`` and
