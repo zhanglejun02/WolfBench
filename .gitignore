@@ -46,7 +46,7 @@ Thumbs.db
 
 # Generated experiment outputs
 outputs/
-paperoutputs/
+#paperoutputs/
 *.jsonl
 *.pth
 *.ckpt
