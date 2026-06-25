@@ -1,0 +1,5 @@
+scenario,primary_metric,n_grid,alpha_c_complete,crossing_count,n_count,mean_curve_delta,width_slope_loglog,width_narrows,evidence_grade,caveat
+s1,generic_collapse,500,False,0,1,0.0,,False,inconclusive,Alpha grid or primary-failure threshold needs calibration before making a strong law claim.
+s2,generic_collapse,500,False,0,1,0.0,,False,inconclusive,Alpha grid or primary-failure threshold needs calibration before making a strong law claim.
+s3,spoof_liquidity_failure,500,True,1,1,1.0,,False,partial,"Threshold evidence is present, but one N or width trend needs denser calibration."
+s4,fake_liquidity_failure,500,True,1,1,1.0,,False,mechanism-strong,S4 is evaluated with fake-liquidity primary failure; generic collapse width is diagnostic only.

@@ -1,0 +1,57 @@
+{
+  "figures": [
+    {
+      "figure": "exp12_primary_failure_curves_paper",
+      "title": "Exp12 primary failure curves",
+      "png": "paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures_current/exp12_primary_failure_curves_paper.png",
+      "pdf": "paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures_current/exp12_primary_failure_curves_paper.pdf",
+      "sources": [
+        "paperoutputs/scaling/exp12_canonical_scaling_refined/failure_curves.csv"
+      ],
+      "scenarios": [
+        "s1",
+        "s2",
+        "s3",
+        "s4"
+      ],
+      "n_values": [
+        500,
+        1000,
+        2000,
+        10000
+      ]
+    },
+    {
+      "figure": "exp12_threshold_scaling_paper",
+      "title": "Exp12 threshold scaling",
+      "png": "paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures_current/exp12_threshold_scaling_paper.png",
+      "pdf": "paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures_current/exp12_threshold_scaling_paper.pdf",
+      "sources": [
+        "paperoutputs/scaling/exp12_canonical_scaling_refined/alpha_c_by_scenario_n.csv",
+        "paperoutputs/scaling/exp12_canonical_scaling_refined/width_by_scenario_n.csv"
+      ],
+      "scenarios": [
+        "s1",
+        "s2",
+        "s3",
+        "s4"
+      ]
+    },
+    {
+      "figure": "exp12_evidence_summary_paper",
+      "title": "Exp12 evidence summary",
+      "png": "paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures_current/exp12_evidence_summary_paper.png",
+      "pdf": "paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures_current/exp12_evidence_summary_paper.pdf",
+      "sources": [
+        "paperoutputs/scaling/exp12_canonical_scaling_refined/alpha_c_by_scenario_n.csv",
+        "paperoutputs/scaling/exp12_canonical_scaling_refined/scenario_law_summary.csv"
+      ],
+      "scenarios": [
+        "s1",
+        "s2",
+        "s3",
+        "s4"
+      ]
+    }
+  ]
+}

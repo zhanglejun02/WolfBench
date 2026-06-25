@@ -1,0 +1,2 @@
+summary_written at 2026-06-21T17:08:48Z
+output_dir=paperoutputs/scaling/exp12_refine_s3_s4

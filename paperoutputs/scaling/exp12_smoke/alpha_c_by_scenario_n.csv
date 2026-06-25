@@ -1,0 +1,5 @@
+scenario,n_society,primary_metric,alpha_c_logistic,alpha_c_ci_low,alpha_c_ci_high,alpha_c_linear,logistic_slope,transition_width_10_90,fit_method,bootstrap_successes,coverage_status,p_min,p_max,p_delta,alpha_grid
+s1,500,generic_collapse,,,,,,,linear_fallback_constant_curve,0,right_censored_below_threshold,0.0,0.0,0.0,0.0;0.02
+s2,500,generic_collapse,,,,,,,linear_fallback_constant_curve,0,right_censored_below_threshold,0.0,0.0,0.0,0.0;0.001
+s3,500,spoof_liquidity_failure,0.45000000000000007,0.45000000000000007,0.45000000000000007,0.45,,,linear_fallback_constant_curve,20,crosses_0.5,0.0,1.0,1.0,0.0;0.9
+s4,500,fake_liquidity_failure,0.07500000000000001,0.07500000000000001,0.07500000000000001,0.075,,,linear_fallback_constant_curve,20,crosses_0.5,0.0,1.0,1.0,0.0;0.15

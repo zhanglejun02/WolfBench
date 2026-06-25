@@ -1,0 +1,5 @@
+scenario,primary_metric,n_grid,alpha_c_complete,crossing_count,n_count,mean_curve_delta,width_slope_loglog,width_narrows,evidence_grade,caveat
+s1,generic_collapse,500;1000;2000,True,3,3,0.8111111111111112,-0.3796288012033599,True,strong,All tested N values cross the primary-failure threshold and fitted width narrows with N.
+s2,generic_collapse,500;1000;2000,True,3,3,0.7111111111111111,-1.2593293244831714,True,strong,All tested N values cross the primary-failure threshold and fitted width narrows with N.
+s3,spoof_liquidity_failure,500;1000;2000,True,3,3,1.0,9.824745503014828e-17,False,partial,"Threshold evidence is present, but one N or width trend needs denser calibration."
+s4,fake_liquidity_failure,500;1000;2000,True,3,3,0.9555555555555556,-0.6542872540037162,True,mechanism-strong,S4 is evaluated with fake-liquidity primary failure; generic collapse width is diagnostic only.

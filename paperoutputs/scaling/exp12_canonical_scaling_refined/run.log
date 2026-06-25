@@ -1,0 +1,297 @@
+Mon Jun 22 16:03:01 CST 2026
+Running 14280 episodes for exp12 canonical scaling...
+[  50/14280]   14.9s elapsed
+[ 100/14280]   29.8s elapsed
+[ 150/14280]   44.7s elapsed
+[ 200/14280]   59.6s elapsed
+[ 250/14280]   74.5s elapsed
+[ 300/14280]   89.5s elapsed
+[ 350/14280]  118.5s elapsed
+[ 400/14280]  147.8s elapsed
+[ 450/14280]  177.2s elapsed
+[ 500/14280]  206.8s elapsed
+[ 550/14280]  236.6s elapsed
+[ 600/14280]  266.8s elapsed
+[ 650/14280]  324.7s elapsed
+[ 700/14280]  384.1s elapsed
+[ 750/14280]  443.8s elapsed
+[ 800/14280]  504.0s elapsed
+[ 850/14280]  565.1s elapsed
+[ 900/14280]  627.2s elapsed
+[ 950/14280]  924.8s elapsed
+[1000/14280] 1231.9s elapsed
+[1050/14280] 1548.3s elapsed
+[1100/14280] 1883.4s elapsed
+[1150/14280] 2246.5s elapsed
+[1200/14280] 2666.6s elapsed
+[1250/14280] 2681.4s elapsed
+[1300/14280] 2696.3s elapsed
+[1350/14280] 2711.2s elapsed
+[1400/14280] 2725.8s elapsed
+[1450/14280] 2740.4s elapsed
+[1500/14280] 2755.0s elapsed
+[1550/14280] 2769.7s elapsed
+[1600/14280] 2784.4s elapsed
+[1650/14280] 2799.1s elapsed
+[1700/14280] 2813.8s elapsed
+[1750/14280] 2828.6s elapsed
+[1800/14280] 2843.3s elapsed
+[1850/14280] 2857.9s elapsed
+[1900/14280] 2872.6s elapsed
+[1950/14280] 2887.2s elapsed
+[2000/14280] 2902.0s elapsed
+[2050/14280] 2916.7s elapsed
+[2100/14280] 2931.7s elapsed
+[2150/14280] 2946.6s elapsed
+[2200/14280] 2961.7s elapsed
+[2250/14280] 2976.8s elapsed
+[2300/14280] 2991.8s elapsed
+[2350/14280] 3007.0s elapsed
+[2400/14280] 3022.4s elapsed
+[2450/14280] 3037.8s elapsed
+[2500/14280] 3053.5s elapsed
+[2550/14280] 3069.3s elapsed
+[2600/14280] 3098.2s elapsed
+[2650/14280] 3127.1s elapsed
+[2700/14280] 3156.1s elapsed
+[2750/14280] 3184.9s elapsed
+[2800/14280] 3213.8s elapsed
+[2850/14280] 3242.8s elapsed
+[2900/14280] 3271.8s elapsed
+[2950/14280] 3300.7s elapsed
+[3000/14280] 3329.5s elapsed
+[3050/14280] 3358.4s elapsed
+[3100/14280] 3387.3s elapsed
+[3150/14280] 3416.1s elapsed
+[3200/14280] 3445.2s elapsed
+[3250/14280] 3474.9s elapsed
+[3300/14280] 3504.4s elapsed
+[3350/14280] 3533.9s elapsed
+[3400/14280] 3563.3s elapsed
+[3450/14280] 3593.0s elapsed
+[3500/14280] 3622.5s elapsed
+[3550/14280] 3652.0s elapsed
+[3600/14280] 3681.6s elapsed
+[3650/14280] 3711.2s elapsed
+[3700/14280] 3741.0s elapsed
+[3750/14280] 3771.9s elapsed
+[3800/14280] 3803.1s elapsed
+[3850/14280] 3834.4s elapsed
+[3900/14280] 3866.0s elapsed
+[3950/14280] 3924.5s elapsed
+[4000/14280] 3982.2s elapsed
+[4050/14280] 4040.9s elapsed
+[4100/14280] 4098.5s elapsed
+[4150/14280] 4156.0s elapsed
+[4200/14280] 4213.3s elapsed
+[4250/14280] 4271.6s elapsed
+[4300/14280] 4329.2s elapsed
+[4350/14280] 4386.9s elapsed
+[4400/14280] 4445.2s elapsed
+[4450/14280] 4503.9s elapsed
+[4500/14280] 4562.5s elapsed
+[4550/14280] 4621.1s elapsed
+[4600/14280] 4679.5s elapsed
+[4650/14280] 4737.9s elapsed
+[4700/14280] 4799.2s elapsed
+[4750/14280] 4860.6s elapsed
+[4800/14280] 4921.9s elapsed
+[4850/14280] 4983.0s elapsed
+[4900/14280] 5044.2s elapsed
+[4950/14280] 5105.2s elapsed
+[5000/14280] 5166.6s elapsed
+[5050/14280] 5227.9s elapsed
+[5100/14280] 5290.3s elapsed
+[5150/14280] 5352.7s elapsed
+[5200/14280] 5416.3s elapsed
+[5250/14280] 5480.8s elapsed
+[5300/14280] 5771.6s elapsed
+[5350/14280] 6062.3s elapsed
+[5400/14280] 6356.1s elapsed
+[5450/14280] 6651.5s elapsed
+[5500/14280] 6952.2s elapsed
+[5550/14280] 7248.5s elapsed
+[5600/14280] 7545.6s elapsed
+[5650/14280] 7844.2s elapsed
+[5700/14280] 8141.6s elapsed
+[5750/14280] 8452.3s elapsed
+[5800/14280] 8763.1s elapsed
+[5850/14280] 9074.2s elapsed
+[5900/14280] 9386.8s elapsed
+[5950/14280] 9697.2s elapsed
+[6000/14280] 10021.8s elapsed
+[6050/14280] 10349.3s elapsed
+[6100/14280] 10676.8s elapsed
+[6150/14280] 11005.4s elapsed
+[6200/14280] 11334.7s elapsed
+[6250/14280] 11667.2s elapsed
+[6300/14280] 12003.9s elapsed
+[6350/14280] 12342.4s elapsed
+[6400/14280] 12677.0s elapsed
+[6450/14280] 13019.9s elapsed
+[6500/14280] 13373.2s elapsed
+[6550/14280] 13733.2s elapsed
+[6600/14280] 14115.2s elapsed
+[6650/14280] 14130.7s elapsed
+[6700/14280] 14146.6s elapsed
+[6750/14280] 14162.5s elapsed
+[6800/14280] 14178.2s elapsed
+[6850/14280] 14193.7s elapsed
+[6900/14280] 14209.4s elapsed
+[6950/14280] 14225.2s elapsed
+[7000/14280] 14240.9s elapsed
+[7050/14280] 14256.7s elapsed
+[7100/14280] 14272.5s elapsed
+[7150/14280] 14288.3s elapsed
+[7200/14280] 14304.1s elapsed
+[7250/14280] 14320.0s elapsed
+[7300/14280] 14335.9s elapsed
+[7350/14280] 14351.9s elapsed
+[7400/14280] 14367.9s elapsed
+[7450/14280] 14384.2s elapsed
+[7500/14280] 14400.3s elapsed
+[7550/14280] 14416.5s elapsed
+[7600/14280] 14432.6s elapsed
+[7650/14280] 14448.7s elapsed
+[7700/14280] 14464.8s elapsed
+[7750/14280] 14481.0s elapsed
+[7800/14280] 14497.2s elapsed
+[7850/14280] 14513.3s elapsed
+[7900/14280] 14529.5s elapsed
+[7950/14280] 14545.6s elapsed
+[8000/14280] 14561.8s elapsed
+[8050/14280] 14578.2s elapsed
+[8100/14280] 14594.7s elapsed
+[8150/14280] 14626.0s elapsed
+[8200/14280] 14657.3s elapsed
+[8250/14280] 14688.8s elapsed
+[8300/14280] 14720.4s elapsed
+[8350/14280] 14752.0s elapsed
+[8400/14280] 14783.7s elapsed
+[8450/14280] 14815.3s elapsed
+[8500/14280] 14847.1s elapsed
+[8550/14280] 14878.8s elapsed
+[8600/14280] 14910.6s elapsed
+[8650/14280] 14943.1s elapsed
+[8700/14280] 14975.2s elapsed
+[8750/14280] 15007.3s elapsed
+[8800/14280] 15039.8s elapsed
+[8850/14280] 15072.2s elapsed
+[8900/14280] 15104.3s elapsed
+[8950/14280] 15136.4s elapsed
+[9000/14280] 15168.7s elapsed
+[9050/14280] 15200.9s elapsed
+[9100/14280] 15233.2s elapsed
+[9150/14280] 15265.7s elapsed
+[9200/14280] 15298.2s elapsed
+[9250/14280] 15330.6s elapsed
+[9300/14280] 15363.3s elapsed
+[9350/14280] 15396.1s elapsed
+[9400/14280] 15428.8s elapsed
+[9450/14280] 15461.3s elapsed
+[9500/14280] 15494.1s elapsed
+[9550/14280] 15527.2s elapsed
+[9600/14280] 15560.6s elapsed
+[9650/14280] 15624.9s elapsed
+[9700/14280] 15689.2s elapsed
+[9750/14280] 15753.9s elapsed
+[9800/14280] 15818.3s elapsed
+[9850/14280] 15883.1s elapsed
+[9900/14280] 15947.8s elapsed
+[9950/14280] 16012.3s elapsed
+[10000/14280] 16077.9s elapsed
+[10050/14280] 16143.1s elapsed
+[10100/14280] 16209.0s elapsed
+[10150/14280] 16275.2s elapsed
+[10200/14280] 16341.2s elapsed
+[10250/14280] 16407.5s elapsed
+[10300/14280] 16472.9s elapsed
+[10350/14280] 16539.4s elapsed
+[10400/14280] 16605.6s elapsed
+[10450/14280] 16671.7s elapsed
+[10500/14280] 16737.8s elapsed
+[10550/14280] 16803.7s elapsed
+[10600/14280] 16870.8s elapsed
+[10650/14280] 16937.0s elapsed
+[10700/14280] 17003.5s elapsed
+[10750/14280] 17070.4s elapsed
+[10800/14280] 17137.4s elapsed
+[10850/14280] 17205.6s elapsed
+[10900/14280] 17273.6s elapsed
+[10950/14280] 17341.9s elapsed
+[11000/14280] 17410.9s elapsed
+[11050/14280] 17479.4s elapsed
+[11100/14280] 17548.4s elapsed
+[11150/14280] 17892.4s elapsed
+[11200/14280] 18234.3s elapsed
+[11250/14280] 18578.6s elapsed
+[11300/14280] 18922.5s elapsed
+[11350/14280] 19263.5s elapsed
+[11400/14280] 19601.9s elapsed
+[11450/14280] 19945.0s elapsed
+[11500/14280] 20290.4s elapsed
+[11550/14280] 20636.0s elapsed
+[11600/14280] 20979.1s elapsed
+[11650/14280] 21324.9s elapsed
+[11700/14280] 21668.9s elapsed
+[11750/14280] 22014.7s elapsed
+[11800/14280] 22376.5s elapsed
+[11850/14280] 22730.6s elapsed
+[11900/14280] 23078.7s elapsed
+[11950/14280] 23428.4s elapsed
+[12000/14280] 23778.1s elapsed
+[12050/14280] 24127.6s elapsed
+[12100/14280] 24478.5s elapsed
+[12150/14280] 24830.3s elapsed
+[12200/14280] 25182.3s elapsed
+[12250/14280] 25535.6s elapsed
+[12300/14280] 25898.2s elapsed
+[12350/14280] 26255.9s elapsed
+[12400/14280] 26612.8s elapsed
+[12450/14280] 26969.2s elapsed
+[12500/14280] 27326.7s elapsed
+[12550/14280] 27687.9s elapsed
+[12600/14280] 28052.0s elapsed
+[12650/14280] 28067.2s elapsed
+[12700/14280] 28082.2s elapsed
+[12750/14280] 28097.3s elapsed
+[12800/14280] 28112.3s elapsed
+[12850/14280] 28127.2s elapsed
+[12900/14280] 28142.1s elapsed
+[12950/14280] 28156.9s elapsed
+[13000/14280] 28171.5s elapsed
+[13050/14280] 28195.3s elapsed
+[13100/14280] 28225.2s elapsed
+[13150/14280] 28254.9s elapsed
+[13200/14280] 28284.5s elapsed
+[13250/14280] 28314.1s elapsed
+[13300/14280] 28343.7s elapsed
+[13350/14280] 28373.0s elapsed
+[13400/14280] 28402.1s elapsed
+[13450/14280] 28437.2s elapsed
+[13500/14280] 28496.7s elapsed
+[13550/14280] 28556.3s elapsed
+[13600/14280] 28615.3s elapsed
+[13650/14280] 28674.4s elapsed
+[13700/14280] 28733.0s elapsed
+[13750/14280] 28791.6s elapsed
+[13800/14280] 28849.8s elapsed
+[13850/14280] 28907.2s elapsed
+[13900/14280] 29158.0s elapsed
+[13950/14280] 29455.6s elapsed
+[14000/14280] 29752.0s elapsed
+[14050/14280] 30047.5s elapsed
+[14100/14280] 30342.1s elapsed
+[14150/14280] 30636.8s elapsed
+[14200/14280] 30929.8s elapsed
+[14250/14280] 31220.5s elapsed
+[14280/14280] 31391.3s elapsed
+Done. Wrote /root/WolfBench/paperoutputs/scaling/exp12_canonical_scaling_refined
+Wrote 3 Exp12 paper figures to /root/WolfBench/paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures
+paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures/exp12_primary_failure_curves_paper.png
+paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures/exp12_primary_failure_curves_paper.pdf
+paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures/exp12_threshold_scaling_paper.png
+paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures/exp12_threshold_scaling_paper.pdf
+paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures/exp12_evidence_summary_paper.png
+paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures/exp12_evidence_summary_paper.pdf
+Tue Jun 23 00:47:04 CST 2026

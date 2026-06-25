@@ -1,0 +1,38 @@
+/root/autodl-tmp/venvs/vllm/lib/python3.10/site-packages/numpy/_core/_methods.py:223: RuntimeWarning: Degrees of freedom <= 0 for slice
+  ret = _var(a, axis=axis, dtype=dtype, out=out, ddof=ddof,
+/root/autodl-tmp/venvs/vllm/lib/python3.10/site-packages/numpy/_core/_methods.py:181: RuntimeWarning: invalid value encountered in divide
+  arrmean = um.true_divide(arrmean, div, out=arrmean,
+/root/autodl-tmp/venvs/vllm/lib/python3.10/site-packages/numpy/_core/_methods.py:215: RuntimeWarning: invalid value encountered in scalar divide
+  ret = ret.dtype.type(ret / rcount)
+
+=== s1 / N=1000 / noguard ===
+[   5/5]    3.1s elapsed
+
+=== s1 / N=1000 / oracle ===
+[   5/5]    2.3s elapsed
+
+=== s2 / N=1000 / noguard ===
+[   5/5]    3.0s elapsed
+
+=== s2 / N=1000 / oracle ===
+[   5/5]    2.6s elapsed
+
+=== s3 / N=1000 / noguard ===
+[   4/4]    2.9s elapsed
+
+=== s3 / N=1000 / oracle ===
+[   4/4]    1.6s elapsed
+
+=== s4 / N=1000 / noguard ===
+[   5/5]    3.1s elapsed
+
+=== s4 / N=1000 / oracle ===
+[   5/5]    2.4s elapsed
+/root/WolfBench/experiments/defense_benchmark/exp6_defense_leaderboard.py:559: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  ax.legend()
+/root/WolfBench/experiments/defense_benchmark/exp6_defense_leaderboard.py:574: UserWarning: No artists with labels found to put in legend.  Note that artists whose label start with an underscore are ignored when legend() is called with no argument.
+  ax.legend()
+
+Leaderboard written to /root/WolfBench/paperoutputs/benchmark/exp6_noguard_oracle_budgeted
+Controls not ranked: noguard
+Upper bounds not ranked: oracle

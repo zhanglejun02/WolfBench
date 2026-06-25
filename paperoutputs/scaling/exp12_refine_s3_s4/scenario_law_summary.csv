@@ -1,0 +1,3 @@
+scenario,primary_metric,n_grid,alpha_c_complete,crossing_count,n_count,mean_curve_delta,width_slope_loglog,width_narrows,evidence_grade,caveat
+s3,spoof_liquidity_failure,500;1000;2000,True,3,3,1.0,-0.16570718167443532,True,strong,All tested N values cross the primary-failure threshold and fitted width narrows with N.
+s4,fake_liquidity_failure,500;1000;2000,True,3,3,0.9444444444444445,-0.3352793983271404,True,mechanism-strong,S4 is evaluated with fake-liquidity primary failure; generic collapse width is diagnostic only.

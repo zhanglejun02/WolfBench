@@ -1,0 +1,6 @@
+Defense,S1 alpha_c,S1 delta_alpha_c,S2 alpha_c,S2 delta_alpha_c
+noguard,0.02,0.0,0.001,0.0
+random,0.02,0.0,0.001,0.0
+rule,0.02,0.0,0.001,0.0
+topology_aware,0.02,0.0,0.001,0.0
+oracle,0.02,0.0,0.001,0.0

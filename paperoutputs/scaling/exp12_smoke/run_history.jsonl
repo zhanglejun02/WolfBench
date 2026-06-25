@@ -1,0 +1,5 @@
+{"event": "started", "at_utc": "2026-06-21T15:22:31Z", "output_dir": "paperoutputs/scaling/exp12_smoke"}
+{"event": "started", "at_utc": "2026-06-21T15:23:23Z", "output_dir": "paperoutputs/scaling/exp12_smoke"}
+{"event": "summary_written", "at_utc": "2026-06-21T15:23:26Z", "output_dir": "paperoutputs/scaling/exp12_smoke"}
+{"event": "started", "at_utc": "2026-06-21T15:25:35Z", "output_dir": "paperoutputs/scaling/exp12_smoke"}
+{"event": "summary_written", "at_utc": "2026-06-21T15:25:38Z", "output_dir": "paperoutputs/scaling/exp12_smoke"}

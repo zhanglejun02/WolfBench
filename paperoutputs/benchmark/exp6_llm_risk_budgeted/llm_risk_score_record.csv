@@ -1,0 +1,5 @@
+combined_rank,output,defense,track,status,rank,tps,delta_alpha_c_over_w0,critical_delta_p,clean_cost,fp
+1,exp6_qwen14b_awq_risk_budgeted,qwen_risk,open_llm_risk,eligible,1,23.95822482138728,4.957824679276297,-0.08333346671735706,0.025500000000000012,0.0
+2,exp6_deepseek_risk_budgeted,deepseek_risk,open_llm_risk,eligible,1,23.81338107320391,4.957824679276297,-0.08333346671735706,0.02483333333333334,0.0
+3,exp6_llama_risk_budgeted,llama_risk,open_llm_risk,eligible,1,20.633874633377445,2.238473074350249,0.08333333985166702,0.0003333333333333333,0.0
+4,exp6_mistral_risk_budgeted,mistral_risk,open_llm_risk,eligible,1,1.0186255385077472,4.957824679276297,-0.08333346671735706,0.1534999999999999,0.0

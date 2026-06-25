@@ -1,0 +1,43 @@
+{
+  "created": "2026-06-24",
+  "output_dir": "paperoutputs/benchmark/exp6_noguard_oracle_budgeted",
+  "overall": [
+    {
+      "defense": "noguard",
+      "track": "control",
+      "tps": 0.0,
+      "delta_alpha_c_over_w0": 0.0,
+      "critical_delta_p": 0.0,
+      "clean_cost": 0.0,
+      "fp": 0.0,
+      "status": "reference"
+    },
+    {
+      "defense": "oracle",
+      "track": "oracle_upper_bound",
+      "tps": 48.763130013810105,
+      "delta_alpha_c_over_w0": 13.816245395725787,
+      "critical_delta_p": 0.2499995030926253,
+      "clean_cost": 0.0,
+      "fp": 0.0,
+      "status": "upper bound"
+    }
+  ],
+  "scenario_scores": [
+    {"scenario": "s1", "defense": "noguard", "tps": 0.0, "delta_alpha_c_over_w0": 0.0, "critical_delta_p": 0.0, "clean_cost": 0.0, "fp": 0.0},
+    {"scenario": "s1", "defense": "oracle", "tps": 83.81591776145547, "delta_alpha_c_over_w0": 23.9367096870128, "critical_delta_p": 0.33333233262225487, "clean_cost": 0.0, "fp": 0.0},
+    {"scenario": "s2", "defense": "noguard", "tps": 0.0, "delta_alpha_c_over_w0": 0.0, "critical_delta_p": 0.0, "clean_cost": 0.0, "fp": 0.0},
+    {"scenario": "s2", "defense": "oracle", "tps": 96.62660674729848, "delta_alpha_c_over_w0": 31.328271895890346, "critical_delta_p": 0.6666656797482463, "clean_cost": 0.0, "fp": 0.0},
+    {"scenario": "s3", "defense": "noguard", "tps": 0.0, "delta_alpha_c_over_w0": 0.0, "critical_delta_p": 0.0, "clean_cost": 0.0, "fp": 0.0},
+    {"scenario": "s3", "defense": "oracle", "tps": 9.477997707274598, "delta_alpha_c_over_w0": 0.0, "critical_delta_p": 0.0, "clean_cost": 0.0, "fp": 0.0},
+    {"scenario": "s4", "defense": "noguard", "tps": 0.0, "delta_alpha_c_over_w0": 0.0, "critical_delta_p": 0.0, "clean_cost": 0.0, "fp": 0.0},
+    {"scenario": "s4", "defense": "oracle", "tps": 5.13199783921188, "delta_alpha_c_over_w0": 0.0, "critical_delta_p": 0.0, "clean_cost": 0.0, "fp": 0.0}
+  ],
+  "run_config": {
+    "requested_defenses": ["noguard"],
+    "upper_bounds": ["oracle"],
+    "scenarios": ["s1", "s2", "s3", "s4"],
+    "n_grid": [1000],
+    "seeds": [1]
+  }
+}

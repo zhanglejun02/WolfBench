@@ -1,0 +1,2 @@
+summary_written at 2026-06-21T13:45:02Z
+output_dir=paperoutputs/benchmark/exp6_tps_smoke

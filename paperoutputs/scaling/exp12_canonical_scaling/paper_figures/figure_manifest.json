@@ -1,0 +1,27 @@
+{
+  "figures": [
+    {
+      "figure": "exp12_canonical_scaling_paper",
+      "title": "Exp12 canonical harmful-agent scaling",
+      "png": "paperoutputs/scaling/exp12_canonical_scaling/paper_figures/exp12_canonical_scaling_paper.png",
+      "pdf": "paperoutputs/scaling/exp12_canonical_scaling/paper_figures/exp12_canonical_scaling_paper.pdf",
+      "sources": [
+        "paperoutputs/scaling/exp12_canonical_scaling/failure_curves.csv",
+        "paperoutputs/scaling/exp12_canonical_scaling/alpha_c_by_scenario_n.csv",
+        "paperoutputs/scaling/exp12_canonical_scaling/width_by_scenario_n.csv",
+        "paperoutputs/scaling/exp12_canonical_scaling/scenario_law_summary.csv"
+      ],
+      "scenarios": [
+        "s1",
+        "s2",
+        "s3",
+        "s4"
+      ],
+      "n_values": [
+        500,
+        1000,
+        2000
+      ]
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "generated_at": "2026-06-23",
+  "purpose": "Current figure board built from paperoutputs artifacts only.",
+  "notes": [
+    "Legacy outputs/paper_required_figures is not used here.",
+    "experiments.paper_required_figures currently fails because paperoutputs/scaling/exp1_alpha_scaling/collapse_rate_wilson_ci.csv is missing.",
+    "Exp12 refined is the current complete scaling/mechanism evidence source.",
+    "exp6_tps_smoke is a smoke leaderboard, not a full paper-final leaderboard.",
+    "figure_1_killer_scaling is a thesis-facing overview figure; its defense panel is an objective schematic until replaced by a full TPS rerun."
+  ],
+  "figures": [
+    {
+      "id": "figure_1_killer_scaling",
+      "files": [
+        "paperoutputs/current_figure_board/figure_1_killer_scaling.png",
+        "paperoutputs/current_figure_board/figure_1_killer_scaling.pdf"
+      ],
+      "source": "experiments/paper_killer_figure1.py using paperoutputs/scaling/exp12_canonical_scaling_refined",
+      "status": "current_usable_with_schematic_defense_panel",
+      "paper_use": "Manuscript Figure 1 overview: closed-loop amplification, finite-size transition, alpha_c movement, transition width, and defense objective"
+    },
+    {
+      "id": "figure_a_exp12_primary_failure_curves",
+      "files": [
+        "paperoutputs/current_figure_board/figure_a_exp12_primary_failure_curves.png",
+        "paperoutputs/current_figure_board/figure_a_exp12_primary_failure_curves.pdf"
+      ],
+      "source": "paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures_current/exp12_primary_failure_curves_paper",
+      "status": "current_usable",
+      "paper_use": "Scaling and mechanism-specific primary-failure curves"
+    },
+    {
+      "id": "figure_b_exp12_threshold_scaling",
+      "files": [
+        "paperoutputs/current_figure_board/figure_b_exp12_threshold_scaling.png",
+        "paperoutputs/current_figure_board/figure_b_exp12_threshold_scaling.pdf"
+      ],
+      "source": "paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures_current/exp12_threshold_scaling_paper",
+      "status": "current_usable_with_caveats",
+      "paper_use": "Alpha_c by scenario and N; threshold scaling evidence"
+    },
+    {
+      "id": "figure_c_exp12_evidence_summary",
+      "files": [
+        "paperoutputs/current_figure_board/figure_c_exp12_evidence_summary.png",
+        "paperoutputs/current_figure_board/figure_c_exp12_evidence_summary.pdf"
+      ],
+      "source": "paperoutputs/scaling/exp12_canonical_scaling_refined/paper_figures_current/exp12_evidence_summary_paper",
+      "status": "current_usable",
+      "paper_use": "Compact S1-S4 evidence summary"
+    },
+    {
+      "id": "figure_d_tps_smoke_leaderboard",
+      "files": [
+        "paperoutputs/current_figure_board/figure_d_tps_smoke_leaderboard.png"
+      ],
+      "source": "paperoutputs/benchmark/exp6_tps_smoke/leaderboard.png",
+      "status": "current_smoke_only",
+      "paper_use": "Defense leaderboard sanity check only"
+    },
+    {
+      "id": "figure_e_tps_smoke_overall",
+      "files": [
+        "paperoutputs/current_figure_board/figure_e_tps_smoke_overall.png"
+      ],
+      "source": "paperoutputs/benchmark/exp6_tps_smoke/leaderboard_overall.png",
+      "status": "current_smoke_only",
+      "paper_use": "Overall TPS smoke diagnostics only"
+    },
+    {
+      "id": "figure_f_tps_smoke_threshold_shift",
+      "files": [
+        "paperoutputs/current_figure_board/figure_f_tps_smoke_threshold_shift.png"
+      ],
+      "source": "paperoutputs/benchmark/exp6_tps_smoke/threshold_shift.png",
+      "status": "current_smoke_only",
+      "paper_use": "Defense threshold-shift diagnostic only"
+    },
+    {
+      "id": "figure_g_tps_smoke_collapse_curves",
+      "files": [
+        "paperoutputs/current_figure_board/figure_g_tps_smoke_collapse_curves.png"
+      ],
+      "source": "paperoutputs/benchmark/exp6_tps_smoke/collapse_curves.png",
+      "status": "current_smoke_only",
+      "paper_use": "Defense collapse-curve diagnostic only"
+    }
+  ]
+}

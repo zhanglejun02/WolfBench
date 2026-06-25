@@ -1,0 +1,13 @@
+{
+  "figure": "figure_1_killer_scaling",
+  "title": "Figure 1: Harmful-agent population scaling",
+  "png": "paperoutputs/current_figure_board/figure_1_killer_scaling.png",
+  "pdf": "paperoutputs/current_figure_board/figure_1_killer_scaling.pdf",
+  "sources": [
+    "paperoutputs/scaling/exp12_canonical_scaling_refined/failure_curves.csv",
+    "paperoutputs/scaling/exp12_canonical_scaling_refined/alpha_c_by_scenario_n.csv",
+    "paperoutputs/scaling/exp12_canonical_scaling_refined/width_by_scenario_n.csv",
+    "paperoutputs/scaling/exp12_canonical_scaling_refined/scenario_law_summary.csv"
+  ],
+  "note": "Thesis-facing overview figure; defense panel is an objective schematic unless replaced by a full TPS rerun."
+}

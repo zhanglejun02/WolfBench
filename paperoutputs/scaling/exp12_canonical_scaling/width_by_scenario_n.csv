@@ -1,0 +1,13 @@
+scenario,n_society,primary_metric,transition_width_10_90,alpha_c_logistic,coverage_status,fit_method
+s1,500,generic_collapse,0.034471343847722685,0.012683079144151503,crosses_0.5,logistic_fit
+s1,1000,generic_collapse,0.023206925300521014,0.01261063517052925,crosses_0.5,logistic_fit
+s1,2000,generic_collapse,0.02036567935209881,0.011453362251353998,crosses_0.5,logistic_fit
+s2,500,generic_collapse,0.001580382168375601,0.0008405593722580613,crosses_0.5,logistic_fit
+s2,1000,generic_collapse,0.0009133911663151873,0.0004606981599974558,crosses_0.5,logistic_fit
+s2,2000,generic_collapse,0.0002757847952365624,0.00030763356331734354,crosses_0.5,logistic_fit
+s3,500,spoof_liquidity_failure,0.023883952672719512,0.0750188411767036,crosses_0.5,logistic_fit
+s3,1000,spoof_liquidity_failure,0.023883952672719512,0.0750188411767036,crosses_0.5,logistic_fit
+s3,2000,spoof_liquidity_failure,0.023883952672719512,0.0750188411767036,crosses_0.5,logistic_fit
+s4,500,fake_liquidity_failure,0.021249010570146498,0.025404635978636583,crosses_0.5,logistic_fit
+s4,1000,fake_liquidity_failure,0.001988132508694252,0.020121367739028485,crosses_0.5,logistic_fit
+s4,2000,fake_liquidity_failure,0.008578641795732185,0.02317614241293668,crosses_0.5,logistic_fit

@@ -1,0 +1,17 @@
+scenario,n_society,primary_metric,transition_width_10_90,alpha_c_logistic,coverage_status,fit_method
+s1,500,generic_collapse,0.034471343847722685,0.012683079144151503,crosses_0.5,logistic_fit
+s1,1000,generic_collapse,0.023206925300521014,0.01261063517052925,crosses_0.5,logistic_fit
+s1,2000,generic_collapse,0.02036567935209881,0.011453362251353998,crosses_0.5,logistic_fit
+s1,10000,generic_collapse,0.02538757148348488,0.0056758222764940955,crosses_0.5,logistic_fit
+s2,500,generic_collapse,0.0019903398331161675,0.0007164412113621516,crosses_0.5,logistic_fit
+s2,1000,generic_collapse,0.0009157733712048271,0.0003561690991632585,crosses_0.5,logistic_fit
+s2,2000,generic_collapse,0.00040911239431936074,0.00020613433655497477,crosses_0.5,logistic_fit
+s2,10000,generic_collapse,0.00011599227635389305,1.0922049215625428e-26,left_censored_above_threshold,logistic_fit
+s3,500,spoof_liquidity_failure,0.0004146846788835403,0.08874819279084978,crosses_0.5,logistic_fit
+s3,1000,spoof_liquidity_failure,0.0004173626376408575,0.06375106542546126,crosses_0.5,logistic_fit
+s3,2000,spoof_liquidity_failure,0.0004131810193078578,0.043750072640044886,crosses_0.5,logistic_fit
+s3,10000,spoof_liquidity_failure,0.00041278102111645036,0.018750027402587646,crosses_0.5,logistic_fit
+s4,500,fake_liquidity_failure,0.013039017415159842,0.024114039036805496,crosses_0.5,logistic_fit
+s4,1000,fake_liquidity_failure,0.011159041021308306,0.022584207497630477,crosses_0.5,logistic_fit
+s4,2000,fake_liquidity_failure,0.008191936057294761,0.0225362071564952,crosses_0.5,logistic_fit
+s4,10000,fake_liquidity_failure,0.0049826934057725395,0.02368998049236618,crosses_0.5,logistic_fit

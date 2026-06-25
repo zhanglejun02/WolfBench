@@ -1,0 +1,5 @@
+scenario,n_society,primary_metric,transition_width_10_90,alpha_c_logistic,coverage_status,fit_method
+s1,500,generic_collapse,,,right_censored_below_threshold,linear_fallback_constant_curve
+s2,500,generic_collapse,,,right_censored_below_threshold,linear_fallback_constant_curve
+s3,500,spoof_liquidity_failure,,0.45000000000000007,crosses_0.5,linear_fallback_constant_curve
+s4,500,fake_liquidity_failure,,0.07500000000000001,crosses_0.5,linear_fallback_constant_curve

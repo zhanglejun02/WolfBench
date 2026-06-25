@@ -1,0 +1,2 @@
+combined_rank,output,defense,track,status,rank,tps,delta_alpha_c_over_w0,critical_delta_p,clean_cost,fp
+1,exp6_qwen14b_awq_risk_budgeted,qwen_risk,open_llm_risk,eligible,1,23.95822482138728,4.957824679276297,-0.08333346671735706,0.025500000000000012,0.0

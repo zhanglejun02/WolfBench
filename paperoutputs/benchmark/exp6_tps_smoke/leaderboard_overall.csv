@@ -1,0 +1,3 @@
+Rank,Defense,Track,TPS,DeltaAlphaC/W0,CriticalDeltaP,CleanCost,FP,Status
+1,topology_aware,submission,2.316012307852012,0.0,0.0,0.003,0.0,eligible
+2,rule,rule_baseline,1.0718254006479978e-07,0.0,0.0,0.39066666666666633,1.0,weak

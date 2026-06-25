@@ -1,0 +1,3 @@
+{"event": "started", "at_utc": "2026-06-24T06:38:46Z", "output_dir": "paperoutputs/benchmark/exp6_qwen14b_awq_risk_budgeted"}
+{"event": "started", "at_utc": "2026-06-24T06:41:39Z", "output_dir": "paperoutputs/benchmark/exp6_qwen14b_awq_risk_budgeted"}
+{"event": "summary_written", "at_utc": "2026-06-24T06:57:53Z", "output_dir": "paperoutputs/benchmark/exp6_qwen14b_awq_risk_budgeted"}

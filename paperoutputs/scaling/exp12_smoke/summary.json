@@ -1,0 +1,177 @@
+{
+  "scenarios": [
+    "s1",
+    "s2",
+    "s3",
+    "s4"
+  ],
+  "n_grid": [
+    500
+  ],
+  "alpha_grids": {
+    "s1": [
+      0.0,
+      0.02
+    ],
+    "s2": [
+      0.0,
+      0.001
+    ],
+    "s3": [
+      0.0,
+      0.9
+    ],
+    "s4": [
+      0.0,
+      0.15
+    ]
+  },
+  "seeds": [
+    1
+  ],
+  "ci_boot": 20,
+  "primary_metrics": {
+    "s1": "generic_collapse",
+    "s2": "generic_collapse",
+    "s3": "spoof_liquidity_failure",
+    "s4": "fake_liquidity_failure"
+  },
+  "threshold_summary": [
+    {
+      "scenario": "s1",
+      "n_society": 500,
+      "primary_metric": "generic_collapse",
+      "alpha_c_logistic": null,
+      "alpha_c_ci_low": null,
+      "alpha_c_ci_high": null,
+      "alpha_c_linear": null,
+      "logistic_slope": null,
+      "transition_width_10_90": null,
+      "fit_method": "linear_fallback_constant_curve",
+      "bootstrap_successes": 0,
+      "coverage_status": "right_censored_below_threshold",
+      "p_min": 0.0,
+      "p_max": 0.0,
+      "p_delta": 0.0,
+      "alpha_grid": "0.0;0.02"
+    },
+    {
+      "scenario": "s2",
+      "n_society": 500,
+      "primary_metric": "generic_collapse",
+      "alpha_c_logistic": null,
+      "alpha_c_ci_low": null,
+      "alpha_c_ci_high": null,
+      "alpha_c_linear": null,
+      "logistic_slope": null,
+      "transition_width_10_90": null,
+      "fit_method": "linear_fallback_constant_curve",
+      "bootstrap_successes": 0,
+      "coverage_status": "right_censored_below_threshold",
+      "p_min": 0.0,
+      "p_max": 0.0,
+      "p_delta": 0.0,
+      "alpha_grid": "0.0;0.001"
+    },
+    {
+      "scenario": "s3",
+      "n_society": 500,
+      "primary_metric": "spoof_liquidity_failure",
+      "alpha_c_logistic": 0.45000000000000007,
+      "alpha_c_ci_low": 0.45000000000000007,
+      "alpha_c_ci_high": 0.45000000000000007,
+      "alpha_c_linear": 0.45,
+      "logistic_slope": null,
+      "transition_width_10_90": null,
+      "fit_method": "linear_fallback_constant_curve",
+      "bootstrap_successes": 20,
+      "coverage_status": "crosses_0.5",
+      "p_min": 0.0,
+      "p_max": 1.0,
+      "p_delta": 1.0,
+      "alpha_grid": "0.0;0.9"
+    },
+    {
+      "scenario": "s4",
+      "n_society": 500,
+      "primary_metric": "fake_liquidity_failure",
+      "alpha_c_logistic": 0.07500000000000001,
+      "alpha_c_ci_low": 0.07500000000000001,
+      "alpha_c_ci_high": 0.07500000000000001,
+      "alpha_c_linear": 0.075,
+      "logistic_slope": null,
+      "transition_width_10_90": null,
+      "fit_method": "linear_fallback_constant_curve",
+      "bootstrap_successes": 20,
+      "coverage_status": "crosses_0.5",
+      "p_min": 0.0,
+      "p_max": 1.0,
+      "p_delta": 1.0,
+      "alpha_grid": "0.0;0.15"
+    }
+  ],
+  "scenario_law_summary": [
+    {
+      "scenario": "s1",
+      "primary_metric": "generic_collapse",
+      "n_grid": "500",
+      "alpha_c_complete": false,
+      "crossing_count": 0,
+      "n_count": 1,
+      "mean_curve_delta": 0.0,
+      "width_slope_loglog": null,
+      "width_narrows": false,
+      "evidence_grade": "inconclusive",
+      "caveat": "Alpha grid or primary-failure threshold needs calibration before making a strong law claim."
+    },
+    {
+      "scenario": "s2",
+      "primary_metric": "generic_collapse",
+      "n_grid": "500",
+      "alpha_c_complete": false,
+      "crossing_count": 0,
+      "n_count": 1,
+      "mean_curve_delta": 0.0,
+      "width_slope_loglog": null,
+      "width_narrows": false,
+      "evidence_grade": "inconclusive",
+      "caveat": "Alpha grid or primary-failure threshold needs calibration before making a strong law claim."
+    },
+    {
+      "scenario": "s3",
+      "primary_metric": "spoof_liquidity_failure",
+      "n_grid": "500",
+      "alpha_c_complete": true,
+      "crossing_count": 1,
+      "n_count": 1,
+      "mean_curve_delta": 1.0,
+      "width_slope_loglog": null,
+      "width_narrows": false,
+      "evidence_grade": "partial",
+      "caveat": "Threshold evidence is present, but one N or width trend needs denser calibration."
+    },
+    {
+      "scenario": "s4",
+      "primary_metric": "fake_liquidity_failure",
+      "n_grid": "500",
+      "alpha_c_complete": true,
+      "crossing_count": 1,
+      "n_count": 1,
+      "mean_curve_delta": 1.0,
+      "width_slope_loglog": null,
+      "width_narrows": false,
+      "evidence_grade": "mechanism-strong",
+      "caveat": "S4 is evaluated with fake-liquidity primary failure; generic collapse width is diagnostic only."
+    }
+  ],
+  "outputs": {
+    "data": "data.csv",
+    "failure_curves": "failure_curves.csv",
+    "alpha_c_by_scenario_n": "alpha_c_by_scenario_n.csv",
+    "width_by_scenario_n": "width_by_scenario_n.csv",
+    "scenario_law_summary": "scenario_law_summary.csv",
+    "report": "report.md",
+    "primary_failure_curves": "primary_failure_curves.png",
+    "transition_width_by_n": "transition_width_by_n.png"
+  }
+}

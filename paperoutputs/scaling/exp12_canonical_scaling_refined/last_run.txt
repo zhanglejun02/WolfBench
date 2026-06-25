@@ -1,0 +1,2 @@
+summary_written at 2026-06-22T16:47:00Z
+output_dir=paperoutputs/scaling/exp12_canonical_scaling_refined
